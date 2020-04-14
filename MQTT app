@@ -2167,7 +2167,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"beta 2","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"beta 3","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -2831,7 +2831,7 @@ def switched(evt, name=null, type=null, state=null,id=0) {
             log("Wiping atomicState.lastdev","LOG")
         }
         else {
-            log.error "NoMatch"
+            //log.error "NoMatch"
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
@@ -2851,6 +2851,7 @@ def switched(evt, name=null, type=null, state=null,id=0) {
                         } 
                         (cTopic,b,state)=jsonSplit(cTopic,state)
                         log ("(aaa) Sending $state command to MQTT $cTopic  $name [$state] != $atomicState.lastDev","LOG")
+                        mqtt = getChildDevice("MQTT: Child device driver")
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
                 }
@@ -2866,6 +2867,7 @@ def switched(evt, name=null, type=null, state=null,id=0) {
 			normName = normalize(name) 
 			if (state=="on") nState = "true" else nState = "false"    //TODO make flexible
             sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
+            mqtt = getChildDevice("MQTT: Child device driver")
 			mqtt.publishMsg (sTopic,nState,1,settings?.homieStatesPersist)
             if (!atomicState.suppress) {
 			    sTopic=	"homie/${atomicState.normHubName}/${normName}"		
@@ -2921,6 +2923,7 @@ def switchedDim(evt, name=null, type=null, state=null,id=0) {  // why do we pass
                         }                        
                         (cTopic,b,state)=jsonSplit(cTopic,evt.value)
                         log ("(bbb) Sending $state command to MQTT $cTopic","LOG")
+                        mqtt = getChildDevice("MQTT: Child device driver")
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
                 }
@@ -2939,6 +2942,7 @@ def switchedDim(evt, name=null, type=null, state=null,id=0) {  // why do we pass
 			normName = normalize(name)
             sTopic=	"homie/${atomicState.normHubName}/${normName}"
 			if (state=="on") nState = "true" else nState = "false"  // TODO customisable
+            mqtt = getChildDevice("MQTT: Child device driver")
             mqtt.publishMsg (sTopic+'/onoff',nState.toString(),1,settings?.homieStatesPersist)
             if (!atomicState.suppress){
 			    addProperty(sTopic,"onoff")
@@ -2985,6 +2989,7 @@ def dimmed(evt, name=null, type=null, state=null,id=0) {
                     (cTopic,b,state)=jsonSplit(cTopic,evt.value)
                     if(cTopic!=null) {
                         log ("(ccc) Sending command to MQTT $cTopic","INFO")
+                        mqtt = getChildDevice("MQTT: Child device driver")
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
                 }
@@ -3001,7 +3006,8 @@ def dimmed(evt, name=null, type=null, state=null,id=0) {
     	normName = normalize(name) 
 		//================  Limited homie spec implemenation ================
 		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
-		mqtt.publishMsg (sDimTopic,"${state}",1,true)
+		mqtt = getChildDevice("MQTT: Child device driver")
+        mqtt.publishMsg (sDimTopic,"${state}",1,true)
         if (!atomicState.suppress) {
             sTopic="homie/${atomicState.normHubName}/${normName}"
             addProperty(sTopic,'onoff')
@@ -3078,6 +3084,7 @@ def locked(evt, name=null, type=null, state=null, id=0) {
 		normName = normalize(name)
         sTopic="homie/${atomicState.normHubName}/${normName}"
         if (state=="locked") nState = "true" else nState = "false"    //TODO make flexible
+        mqtt = getChildDevice("MQTT: Child device driver")
         mqtt.publishMsg (sTopic+'/lock',nState,1,settings?.homieStatesPersist)
         if (!atomicState.suppress) {
             addProperty(sTopic,'lock')			
@@ -3125,6 +3132,7 @@ def buttons(evt, name=null, type=null, state=null, id=0) {
 		normName = normalize(name)
         sTopic="homie/${atomicState.normHubName}/${normName}"
         addProperty(sTopic,'button')
+        mqtt = getChildDevice("MQTT: Child device driver")
         // mqtt.publishMsg (sTopic+'/button/'+"${xName}","${state}",1,true)
         if (type!=null) mqtt.publishMsg (sTopic+'/button/'+"${normalize(type)}","${state}",1,true)
         else {  // this only happens when button has a physical event
@@ -3168,6 +3176,7 @@ def buttons(evt, name=null, type=null, state=null, id=0) {
 def buttonRel () {
     normName = normalize(name)
     sTopic="homie/${atomicState.normHubName}/${normName}"
+    mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.publishMsg (sTopic+"/button/button-$btnNum","idle",1,true)
 }
 /*
@@ -3196,6 +3205,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, id=0, multiple=fals
         // log ("thermostatDevices called with ${name}/${xType}  ${state.toString()}", "ERROR")
 		HAtype='unknown'
 		UOM=''
+        mqtt = getChildDevice("MQTT: Child device driver")
     	if (settings?.homiePublish) {  //TODO use case rather than if else if
 		    sTopic="homie/${atomicState.normHubName}/${normName}"
 //        if (!atomicState.suppress){
@@ -3376,7 +3386,7 @@ def keypadDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
 		xName=name+nameSuffix
 		log ("keypadDevices (synch) called with name:${name}    xName: ${xName}    type: ${type} / ${xType}   state: ${state}    multiple: ${multiple}","DEBUG")
 	}
-    
+        mqtt = getChildDevice("MQTT: Child device driver")
 	    normName = normalize(name)
 		normxName = normalize(xName)
         settable="false"
@@ -3491,7 +3501,8 @@ def audioDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
     dataType='text'
     settable='false'
     TTS=false
-    atomicState.suppress=true   
+    atomicState.suppress=true
+    mqtt = getChildDevice("MQTT: Child device driver")
     if (category=="trackdescription") {
         len=evt.value.length()
         if (len>20){
@@ -3573,6 +3584,7 @@ def otherDevices(evt, name=null, type=null, state=null, id=0, multiple=false) { 
         normName = normalize(name)
 		normxName = normalize(xName)
         settable="false"
+        mqtt = getChildDevice("MQTT: Child device driver")
         // log ("otherDevices called with ${name}/${xType}  ${state.toString()}", "ERROR")
 		HAtype='unknown'
         category=xType
@@ -3710,6 +3722,7 @@ def sensorDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
         settable="false"
 		HAtype='unknown'
 		UOM=''
+        mqtt = getChildDevice("MQTT: Child device driver")
 		if (settings?.homiePublish) {  //TODO use case rather than if else if
 			sTopic="homie/${atomicState.normHubName}/${normName}"            
 			if (xType=='motion'){
@@ -3946,7 +3959,8 @@ def sensorDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
     }
 }
 
-def colourDevices(evt, name=null,type=null, state=null, id=0) {	
+def colourDevices(evt, name=null,type=null, state=null, id=0) {
+    mqtt = getChildDevice("MQTT: Child device driver")
 	if (evt!=null)
 	{
         device=evt.getDevice()
@@ -3979,7 +3993,7 @@ def colourDevices(evt, name=null,type=null, state=null, id=0) {
 	}
     //log ("Received a new colour event ${xType} from ${name}","TRACE")
 	normName = normalize(name)
-	normxName = normalize(xName) 
+	normxName = normalize(xName)
 	if (settings?.homiePublish) {  //TODO case rather than if
 		sTopic="homie/${atomicState.normHubName}/${normName}"
         if (device!=null) mqtt.publishMsg (sTopic+'/driver',device.typeName,1,true)
@@ -4218,8 +4232,11 @@ def checkNodes(p,name) {
         else if (atomicState.nodes.contains("$normName")){}
         else {
              atomicState.nodes+=','+normName
-             if (settings?.homiePublish) mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',atomicState.nodes,1,true,atomicState.suppress)
-        } 
+            if (settings?.homiePublish) {
+                mqtt = getChildDevice("MQTT: Child device driver")
+                mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',atomicState.nodes,1,true,atomicState.suppress)
+        }
+        }
 }
 
 
@@ -4722,7 +4739,7 @@ def deviceAction (child,devType,value,attr=null)  {
     }    
     //if (isEnum)
     //{
-    if (attr=='switch') { // && device.hasCommand('off')) {  //assume it will have 'on' too
+    if (attr!=null && mapList!=null && attr=='switch') { // && device.hasCommand('off')) {  //assume it will have 'on' too
         //log.error maplist
         //log.warn mapList[0]
         if (mapList[0] == value) {
@@ -5145,7 +5162,8 @@ def sensorUOM(evt) {
 	}
 }
 */
-def cmdEvent (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+// def cmdEvent (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+def commandP (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
 	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
 	//def data = parseJson(evt.data)
 	log ("MQTT set command received for " + name + " " + cmd + " " + state,"INFO")
@@ -5153,6 +5171,7 @@ def cmdEvent (name,state,payload,cmd,topic) {  // 'set' command from homie for a
     matchName=name
     found=false
     cTime=now()
+    mqtt = getChildDevice("MQTT: Child device driver")
     //     DNI=atomicState.newMap[normName]
     log ("$cmd received $state","TRACE") 
 	if (atomicState.nameMap[normName]==null){
@@ -6471,7 +6490,7 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
 //		try {   
 				childDevice = addChildDevice(nameSpace, devType, prefix+name, null,[completedSetup: true, label: pfix + friendlyName])
 				child=getChildDevice(prefix+name)  //hmm seems childDevice is not a device object .ge
-			    if (child == null) log ("Child was never created" + prefix+name , "ERROR")
+			    if (child == null) log ("Child was never created" + prefix+name , "KH")
 			    else log ("Created Child device with label "+ child.label,"INFO")
 			    atomicState.count++			
 			    childrenCount = getChildDevices().size()		
@@ -6720,5 +6739,6 @@ def sendPayload(topic,payload) {
 		return
 	}
 	log ("Send MQTT " + topic + " " + payload, "TRACE")
+    mqtt = getChildDevice("MQTT: Child device driver")
 	mqtt.publishMsg (topic,payload,1,settings?.homieStatesPersist)
 }
