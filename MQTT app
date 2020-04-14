@@ -58,7 +58,7 @@ preferences {  // can't use atomicState vars in this section
 				createMQTTclient()
                 //input "mqtt", "device.MQTTClient", required: false, multiple: false, title: "<b>MQTT Broker</b>", submitOnChange: false
 				input name: "hubName",  type: "text", title: "<b>Hub Name</b>", description: "  choose a unique name for this Hubitat Hub", required: true, displayDuringSetup: true, submitOnChange: false
-		        input name: "MQTTBroker", type: "text", title: "<b>MQTT Broker Address</>", description: "e.g. tcp://192.168.1.17:1883", required: true, displayDuringSetup: true
+		        input name: "MQTTBroker", type: "text", title: "<b>MQTT Broker Address</b>&nbsp&nbsp&nbsp&nbsp&nbsp prefixed tcp://...", description: "e.g. tcp://192.168.1.17:1883  - NB you must include tcp://...", required: true, displayDuringSetup: true
 		        input name: "username", type: "text", title: "<b>MQTT Username</b>", description: "(leave blank if none)", required: false, displayDuringSetup: true
 		        input name: "password", type: "password", title: "<b>MQTT Password</b>", description: "(leave blank if none)", required: false, displayDuringSetup: true
                 //input "newMQTTDev", "button", title: "Create MQTT broker device driver", textColor: "green"
@@ -561,7 +561,7 @@ assisted=false   // beta2 .. disabling this feature temporarily as confusing
            if (attrList[i]!=null && attrList[i].dataType =="ENUM") {
                
              String atts = "${attrList[i].getPossibleValues()}" 
-               log.error "ENUM on " + attrList[i] + " === " +atomicState.attList[i] + " === " + atts
+               log ("ENUM on " + attrList[i] + " === " +atomicState.attList[i] + " === " + atts, "LOG")
              //if (vDev.getDataValue("${atomicState.attList[i]}_MAP")){
                if (vDev.getDataValue("${attrList[i]}_MAP")){
                 // Think I already have this in dataFalse
@@ -575,8 +575,6 @@ assisted=false   // beta2 .. disabling this feature temporarily as confusing
                     //if (atomicState.attList[i] != "level") {  // Need to expand this to other numerics and non binaries
                    if ("${attrList[i]}" != "level") {  // Need to expand this to other numerics and non binaries
                         if (attrList[i].dataType =="ENUM") { 
-                            
-                            log.error "here1 " + varAtt + " " + defAtt 
                         //input(name: varJSON, type: "text", defaultValue: '', title: "JSON {attribute:} name (optional)" , required: false, submitOnChange: false, hideWhenEmpty: true, width: 4)
                         //input(name: varAtt, type: "text", defaultValue: defAtt, title: "&nbsp &nbsp &nbsp &nbsp MQTT payload values for <b>$atts</b> for the <b>${atomicState.attList[i]}</b> attribute" , required: false, submitOnChange: true)// , width: 6)
                        input(name: varAtt, type: "text", defaultValue: defAtt, title: "&nbsp &nbsp &nbsp &nbsp MQTT payload values for <b>$atts</b> for the <b>${attrList[i]}</b> attribute" , required: false, submitOnChange: true)// , width: 6)
@@ -2971,6 +2969,7 @@ def switchedDim(evt, name=null, type=null, state=null,id=0) {  // why do we pass
 }
 
 def dimmed(evt, name=null, type=null, state=null,id=0) {
+    openHAB=false  // setting true forces reported dim value to 0-1.0
 	if (evt!=null)
 	{
 	    device=evt.getDevice()
@@ -3007,7 +3006,15 @@ def dimmed(evt, name=null, type=null, state=null,id=0) {
 		//================  Limited homie spec implemenation ================
 		sDimTopic="homie/${atomicState.normHubName}/${normName}"+'/dim'
 		mqtt = getChildDevice("MQTT: Child device driver")
-        mqtt.publishMsg (sDimTopic,"${state}",1,true)
+        
+// Kludge for OH
+        if (openHAB) {
+                float smallDim = state.toInteger()/100
+                mqtt.publishMsg (sTopic+'/dim',smallDim.toString())
+        }
+        else mqtt.publishMsg (sDimTopic,"${state}",1,true)
+//END Kludge OH
+       
         if (!atomicState.suppress) {
             sTopic="homie/${atomicState.normHubName}/${normName}"
             addProperty(sTopic,'onoff')
@@ -3960,6 +3967,7 @@ def sensorDevices(evt, name=null, type=null, state=null, id=0, multiple=false) {
 }
 
 def colourDevices(evt, name=null,type=null, state=null, id=0) {
+    openHAB=false // setting true forces reported dim value to 0-1.0
     mqtt = getChildDevice("MQTT: Child device driver")
 	if (evt!=null)
 	{
@@ -4082,7 +4090,14 @@ def colourDevices(evt, name=null,type=null, state=null, id=0) {
                 satNum=theDevice.currentValue("saturation")
                 if (satNum == null) satNum = 0
                 valNum=theDevice.currentValue("level")
-                mqtt.publishMsg (sTopic+'/dim',valNum.toString())
+     
+// Kludge for OH
+            if (openHAB) {
+                float smallDim = valNum/100
+                mqtt.publishMsg (sTopic+'/dim',smallDim.toString())
+            }
+            else  mqtt.publishMsg (sTopic+'/dim',valNum.toString())
+//END Kludge OH
                         //log ("V: (${LHueNum}) ${hueNum} ${satNum} ${valNum}","INFO")
                         RGB=hubitat.helper.ColorUtils.hsvToRGB([hueNum,satNum, valNum])
                         mqtt.publishMsg (sTopic+'/'+category+'/rgb',hubitat.helper.ColorUtils.rgbToHEX(RGB),1,true)                   
@@ -4788,7 +4803,7 @@ def deviceAction (child,devType,value,attr=null)  {
             else if (child.hasCommand('setText')) child.setText (value)
         }
         else if (attr=="lock"){
-            log.error "Lock is " + value + "===" + mapList[0]+"===" +mapList[2]
+           log ("Lock is " + value + "===" + mapList[0]+"===" +mapList[2], "INFO")
            if (mapList[0] == value) {
             atomicState.lastDev="$device [locked]"   // This normally updates to the last value on MQTT ie the MAP value
             child.lock()            
@@ -4934,7 +4949,7 @@ def dimEventP (name,level,type,max) {
 }
 
 def HASensorEventP(name,payload,type,bool) {
-    log.error "Passing on sensor Event values:  $name $payload $type $bool"
+    log ( "Passing on sensor Event values:  $name $payload $type $bool", "INFO")
     sensorEvent(name,payload,type,bool)
     // TODO CHECK BUG ??
 }
