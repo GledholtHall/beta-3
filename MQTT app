@@ -53,7 +53,8 @@ definition(
 
 preferences {  // can't use atomicState vars in this section
 
-			page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
+			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
+            page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: false, hideable: true,hideWhenEmpty: true){
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				createMQTTclient()
                 //input "mqtt", "device.MQTTClient", required: false, multiple: false, title: "<b>MQTT Broker</b>", submitOnChange: false
@@ -84,7 +85,22 @@ preferences {  // can't use atomicState vars in this section
 				input name: "HADiscoveryTopic",  type: "text", title: "<b>Home Assistant Discovery Topic</b>", description: "  as configured in HA", required: false, displayDuringSetup: true, submitOnChange: false
 				input "HARemember", "enum", title: "<b>Home Assistant MQTT discovered devices</b>", required: false, defaultValue: "Forget",options: ["Forget", "Remember"], submitOnChange: false			    
             }
+                
+            section ("<b>Discovery into HE</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
+                 href(name: "href2",
+                 title: "Discovery Protocols",
+                 required: false,
+                 page: "discovery")
+            }
 
+                
+            section ("<b>Virtual Devices</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
+                 href(name: "href",
+                 title: "HE Virtual devices associated with arbitrary MQTT topics",
+                 required: false,
+                 page: "vMQTT")
+            }
+                
 			section ("<b>Publish these device capabilities to MQTT</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
                 input "modes", "bool", title: "Mode changes", required: false
                 input "everything", "capability.*",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Everything (all capabilities/attributes a selected device supports)</b>", submitOnChange: false
@@ -129,37 +145,20 @@ preferences {  // can't use atomicState vars in this section
                 input "sensors", "capability.*",hideWhenEmpty: true, title: "<b>List devices Capabilities and Attributes to Hubitat Topic</b>", multiple: true, required: false
                 //input "lots", "capability.switch", title: "Lots", multiple: true
                 //TODO add remaining sensors type (as and if requested)
-                
-                
-                
-                
-
-                
-                
-                
-                
-                
-                
-                
-                
+   
 			}	
-/*                
-            section ("<b>IMPORTANT: Enable all your devices for app access</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
-                input "allDevices", "capability.*",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Required ></b> Please enable the first option <b>Toggle All on/off </b> - to select all devices", submitOnChange: false                
-            }
-*/
-
-            //atomicState.first=true
-
 		}
 
-    page(name: "vMQTT", nextPage: "discovery")    
-	page(name: "discovery", title: "Select MQTT discovered devices",nextPage: "vMQTT", install: true, uninstall: true)
+    //page(name: "vMQTT", nextPage: "discovery")  
+    page(name: "vMQTT", nextPage: "configuration")  
+	//page(name: "discovery", title: "Select MQTT discovered devices",nextPage: "vMQTT", install: true, uninstall: true)
+    page(name: "discovery", title: "Select MQTT discovered devices",nextPage: "configuration")
 }
 
 
 def vMQTT() {
-    dynamicPage(name: "vMQTT", title: "<h2><b>Virtual MQTT Devices and Data</b></h2>(optional)", nextPage: "discovery") {
+    //dynamicPage(name: "vMQTT", title: "<h2><b>Virtual MQTT Devices and Data</b></h2>(optional)", nextPage: "discovery") {
+      dynamicPage(name: "vMQTT", title: "<h2><b>Virtual MQTT Devices and Data</b></h2>(optional)", nextPage: "configuration") {
         atomicState.vList=["RM Connector Variable", "MQTT Text", "Virtual audioVolume", "Virtual Button","Virtual CO Detector", "Virtual Color Temperature Light", "Virtual Contact Sensor", "Virtual Dimmer", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
         //atomicState.attList=[:]
         //def attmap = ['acceleration':'active|inactive','contact':'open|closed', 'water':"wet|dry"]
@@ -656,7 +655,9 @@ assisted=false   // beta2 .. disabling this feature temporarily as confusing
 
 
 def discovery() {  // can use atomicState vars in this section
-    dynamicPage(name: "discovery", title: "", install: true, nextPage:"hrefPage", uninstall: false) {
+    //dynamicPage(name: "discovery", title: "", install: true, nextPage:"hrefPage", uninstall: false) {
+    //dynamicPage(name: "discovery", title: "MQTT Discovery Protocols", install: true, nextPage: "configuration", uninstall: false) {
+    dynamicPage(name: "discovery", title: "MQTT Discovery Protocols", nextPage: "configuration") {
 	section ("<h2><b>MQTT Discovery Protocols > HE </b></h2>(optional)"){
 		if (settings?.homieDiscovery && settings?.homieDevice!=null) homieEnabled='<font color="green">' else homieEnabled='<font color="darkred">'
 		if (settings?.HAStatestream && settings?.HAStatestreamTopic!=null)  HAEnabled='<font color="green">' else HAEnabled='<font color="darkred">'
@@ -823,12 +824,15 @@ def createMQTTclient() {   //TODO IP username password
     namespace='ukusa'
     log ("FYI your MQTT child devices are ${getChildDevices()} ","INFO")
     childDev=getChildDevice("MQTT: Child device driver")  
-    if (childDev == null){
+    if (childDev == null){ //This is a carryover of the client app not being 'selected' anymore in an input dropdown.
+        
         log ("Creating MQTT client child driver" , "INFO")
         try {
             addChildDevice(namespace, "MQTT Client", "MQTT: Child device driver", null,[completedSetup: true,name: "MQTT: Child device driver", logging: false])
         }
-        catch (e) {} //dup DNI    
+        catch (e) {
+        log ("Problem creating child device " + e, "ERROR")
+             }    
     	childDev=getChildDevice("MQTT: Child device driver")  
     	if (childDev == null) log ("MQTT client child was never created" , "ERROR")
     }
@@ -1001,13 +1005,17 @@ def reStart(evt) {
 
 def initialize() {
     mqtt = getChildDevice("MQTT: Child device driver")
-    if (mqtt==null) log ("FATAL: No MQTT broker configured","ERROR")
     atomicState.normHubName = normalize(settings?.hubName)
-	log ("Hubitat hub name is : " + settings?.hubName,"INFO")
-    mqtt.setHubName (atomicState.normHubName,settings?.hubName)
-    mqtt.setUserName (settings?.username)
-    mqtt.setPassword (settings?.password)
-    mqtt.setBrokerAddress (settings?.MQTTBroker)
+    log ("Hubitat hub name is : " + settings?.hubName,"INFO")
+    if (mqtt==null) {
+        log ("FATAL: No MQTT broker configured","ERROR")
+    }
+    else {
+        mqtt.setHubName (atomicState.normHubName,settings?.hubName)
+        mqtt.setUserName (settings?.username)
+        mqtt.setPassword (settings?.password)
+        mqtt.setBrokerAddress (settings?.MQTTBroker)
+    }
     if (atomicState.appcount==null) atomicState.appCount=0
     log ("initialising with App count ${atomicState.appCount}","INFO")
     def date1 = new Date()
@@ -1039,10 +1047,6 @@ def initialize() {
     atomicState.abort=false
     mqttSubscribes()
     atomicState.MQTTconnected=false
-
-
-    
-    
     xtra=0
     for (int i = 0; i < 86 && (atomicState.MQTTconnected==false); i++) {  // tries to reconnect every 10 seconds
         if (i==0)  log ("Waiting for MQTT connection: $atomicState.MQTTconnected","INFO")
@@ -1058,8 +1062,7 @@ def initialize() {
         log ("MQTT has failed to connect. Restart the app to try again","ERROR")
         return
              }
-    
-    
+   
  /*   
     if (!atomicState.MQTTconnected) mqtt.reset()  // Only want to do this once as the driver will continue to attempt reconnects
     countTry=0
@@ -2530,6 +2533,7 @@ private removeAllDiscoveredChildDevices() {
 def subscribeShellyTopic() {
 	//log ("Adding Shelly status topics","INFO") //
 	//mqtt.subscribeTopic('shellies/#')
+    mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.subscribeTopic('shellies/+/onlineRet') // /online  is no use here as is not a retained or updated topic used in LWT (bug in Shelly)
 }
 def subscribeSonoffTopic() {
@@ -2538,6 +2542,7 @@ def subscribeSonoffTopic() {
 }
 
 def subscribeHomieTopic() {
+    mqtt = getChildDevice("MQTT: Child device driver")
     atomicState.timeStamp=now()
     log ("Starting homie Discovery", "BLUE")
     atomicState.progress = now()
@@ -2598,6 +2603,7 @@ def devSubscribes(subs) {
 }
 
 def subscribeHomieStateTopics() {  //TODO Getting returns from these before devices and topicLink are created - delay ??
+    mqtt = getChildDevice("MQTT: Child device driver")
 	log ("Adding homie onoff & dim events subscription topics ", "INFO")
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/onoff')
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/dim')
@@ -2606,6 +2612,7 @@ def subscribeHomieStateTopics() {  //TODO Getting returns from these before devi
 }
 
 def subscribeHomieNameTopics() {
+    mqtt = getChildDevice("MQTT: Child device driver")
 	log ("Adding homie name subscription topics ", "INFO")  
 	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$name')
     mqtt.subscribeTopic ('homie/'+atomicState.normHubName+'/$fw/name')  //using this as it returns after all other messages have arrived so know done
@@ -2655,6 +2662,7 @@ def start_HADiscovery(evt){
 
 def subscribeHADevices(evt=null) {  // ToDo - these might benefit from pacing
 	log ("Adding HA switches, lights and sensors friendly names topics ", "INFO")
+    mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.subscribeTopic(atomicState.HA+'/sensor/+/device_class') // // this creates device
 	mqtt.subscribeTopic(atomicState.HA+'/binary_sensor/+/device_class')// this creates device
 
@@ -2683,6 +2691,7 @@ def subscribeHADevices(evt=null) {  // ToDo - these might benefit from pacing
 
 def unsubscribeHADevices(evt=null) {
     subscribeHADeviceEvents()
+    mqtt = getChildDevice("MQTT: Child device driver")
     // Can't wildcard these as the subs were setup individually
 	log ("Unsubscribing from HA switches, lights and sensors friendly names topics ", "INFO")
     mqtt.subscribeTopic ('homie/'+atomicState.normHubName+'/$fw/version')  //using this to as it returns after all other messages have arrived so know done    
@@ -2727,7 +2736,7 @@ def unsubscribeHADevices(evt=null) {
 def subscribeHADeviceEvents() {// This runs 10 secs after above currently
     
     //Trying to replace these with individual subscribes
-
+    mqtt = getChildDevice("MQTT: Child device driver")
 	log ("No longer adding wildcarded HA switch, sensor, and light events topics", "INFO")
 /*
     mqtt.subscribeTopic(atomicState.HA+'/switch/+/state')
@@ -2762,6 +2771,7 @@ def subscribeHADeviceEvents() {// This runs 10 secs after above currently
 
 def unsubscribeHADeviceEvents() {
     log ("Unsubscribing HA events","INFO")
+    mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.unsubscribeTopic(atomicState.HA+'/switch/+/state')
 	mqtt.unsubscribeTopic(atomicState.HA+'/light/+/state')
 	mqtt.unsubscribeTopic(atomicState.HA+'/light/+/brightness')
@@ -2779,6 +2789,7 @@ def unsubscribeHADeviceEvents() {
 }
 
 def subscribeOneOffTopics(topic) {
+    mqtt = getChildDevice("MQTT: Child device driver")
 	mqtt.subscribeTopic(topic)
 }
 
@@ -3028,7 +3039,8 @@ def dimmed(evt, name=null, type=null, state=null,id=0) {
 		    mqtt.publishMsg (sTopic+'/dim/$name',"${name}",1,true,atomicState.suppress) 
 		    mqtt.publishMsg (sTopic+'/dim/$datatype',"integer",1,true,atomicState.suppress)
 		    mqtt.publishMsg (sTopic+'/dim/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)
-		    mqtt.publishMsg (sTopic+'/dim/$format',"0:100",1,true,atomicState.suppress)
+		    if (openHAB) mqtt.publishMsg (sTopic+'/dim/$format',"0:1",1,true,atomicState.suppress)
+            else mqtt.publishMsg (sTopic+'/dim/$format',"0:100",1,true,atomicState.suppress)
 		    //===================================================================
         }
 	}
@@ -4024,7 +4036,8 @@ def colourDevices(evt, name=null,type=null, state=null, id=0) {
             if (!atomicState.suppress) {
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit','?',1,true)
-				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true,atomicState.suppress)
+                if (openHAB) mqtt.publishMsg (sTopic+'/'+category+'/$format','0:1',1,true,atomicState.suppress)
+				else mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true,atomicState.suppress)	
 				//UOM="%"
             }				
@@ -5301,7 +5314,11 @@ def commandP (name,state,payload,cmd,topic) {  // 'set' command from homie for a
 		}		
 	}	
 	else if (cmd=="dim") {
-		intLevel=state.toInteger()
+        openHAB=true
+        log ("Incoming dim /set $state","WARN")
+        val="${state}"
+        if (openHAB) intLevel=(Float.parseFloat(val) * 100).toInteger()
+		else intLevel=state.toInteger()
 		if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
 		{			
 			log ("Dimmer Lookup for  "+  name + " is " + matchName + " [" + atomicState.nameMap[index] +"] ","TRACE")
