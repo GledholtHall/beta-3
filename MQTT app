@@ -5314,7 +5314,7 @@ def commandP (name,state,payload,cmd,topic) {  // 'set' command from homie for a
 		}		
 	}	
 	else if (cmd=="dim") {
-        openHAB=true
+        openHAB=false
         log ("Incoming dim /set $state","WARN")
         val="${state}"
         if (openHAB) intLevel=(Float.parseFloat(val) * 100).toInteger()
