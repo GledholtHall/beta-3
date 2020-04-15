@@ -137,7 +137,6 @@ void setBrokerAddress(String broker) {
     state.MQTTBroker=broker  
 }
 void setHubName (String normHubName,String hubName) {
-    log.error "called set hub name $normHubName"
     state.normHubName=normHubName
 }
 void setHAStatestreamTopic(String HATopic) {
@@ -854,7 +853,7 @@ def parse(String description) {
 	else {  // unhandled parse messages arrive here
         //state.seq2++
         sequence=state.seq2.toString()
-		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "ERROR")
+		log ("ad hoc MQTT parse  ${interfaces.mqtt.parseMessage(description).topic}       ${payload[0]}", "LOG")
         parent.lookupP(payload[0],interfaces.mqtt.parseMessage(description).payload,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
        // if (json=="true") sendEvent (name: "Lookup", value: interfaces.mqtt.parseMessage(description).payload, data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	   // else sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
