@@ -1854,11 +1854,11 @@ def synchDevices() {
 //#NEW           
                 rgb=it.currentRGB
                 log ("New RGB value for $it is $rgb","KH")
-                if (rgb!=null) colourDevices (null,myName,"RGB",rgb,it)
+//                if (rgb!=null) colourDevices (null,myName,"RGB",rgb,it)
             
                 color=it.currentColor
                 log ("New color value for $it is $color","KH")
-                if (color!=null) colourDevices (null,myName,"color",color,it)
+//                if (color!=null) colourDevices (null,myName,"color",color,it)
 
             
                 normName=normalize(myName)
@@ -4337,7 +4337,6 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
                         //oldRGB=hsvToRGB (hueNum*3.6,satNum, valNum,"high")
                         RGB=hubitat.helper.ColorUtils.hsvToRGB([hueNum,satNum, valNum])
                         mqtt.publishMsg (sTopic+'/'+category,"${LHueNum},${satNum},${valNum}",1,true)     // TODO CHECKRGB  
-            log.warn "Colooooore publish"
                         mqtt.publishMsg (sTopic+'/color/rgb',hubitat.helper.ColorUtils.rgbToHEX(RGB),1,settings?.homieStatesPersist)
 		}
 		else if (xType=='level'){  //hope this doesn't conflict with dimmed  (this is dim)
@@ -4375,7 +4374,6 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
 				category='color'
             	//HAtype="RGB"
             if (!atomicState.suppress) {
-                //log.warn "Color Sat"
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true,atomicState.suppress)
@@ -4423,7 +4421,6 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
                if (state[1] != null) state[1].intValue()
                if (val==null) val=99
                // end jwilliams
-                log.warn "Color publish"
                 mqtt.publishMsg (sTopic+'/color',"${LHueNum},${sat},${val}",1,settings?.homieStatesPersist)
 		        //mqtt.publishMsg (sTopic+'/color','{"h":'+state[0].toString()+',"s":'+state[1].toString()+',"v":'+state[2].toString()+'}',1,settings?.homieStatesPersist)
                 //if (state[2] == null) int val=99 else int val=state[2].intValue()     
