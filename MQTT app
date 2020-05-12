@@ -4263,8 +4263,26 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
 		log ("Got a colour synch " + xName + " " + type + " " + state, "DEBUG") 
         if (state==null) log ("State had a null value for $xName $xType","WARN")
 	}
-    //property=device.getDataValue("properties")
-    log ("Received a new colour event ${xType} from ${name}","LOG")
+    log ("Received a new colour event ${xType} [$state] from ${name}","LOG")
+    
+    if (xType=='switch') prop='onoff'
+    if (xType=='level') prop='dim'
+    if (xType=='colorTemperature') prop='color-temperature'
+    if (xType=='hue') prop='color'
+    if (xType=='saturation') prop='color'
+    if (xType=='hsv') prop='color'
+    if (xType=='colorMode') prop='color-mode'
+    if (xType=='cMode') prop='color-mode'
+    if (xType=='colorName') prop='color-name'
+    if (xType=="RGB"||xType=="RGBT") prop='color'
+    
+    if (!dAttIsEnabled(device,prop)) {
+            log ("$device [$xType] > [$prop] publish topics BLOCKED","ERROR")
+            return
+        }
+    else log ("$device [$xType] > [$prop] publish topics PASSED","WARN")
+    
+    
 	normName = normalize(name)
 	normxName = normalize(xName)
 	if (settings?.homiePublish) {  //TODO case rather than if
@@ -4276,6 +4294,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
             	//HAtype="RGB"
                 log("switch in RGB","KH")
             if (!atomicState.suppress) {
+                
                 if (device!=null) mqtt.publishMsg (sTopic+'/-device-driver',device.typeName,1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype','boolean',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$settable','true',1,true,atomicState.suppress)	
@@ -4502,6 +4521,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
         
         if (category=="unknown") {
             log ("Need to handle ${xType}  - for ${name.toString()} in RGB colour", "WARN")
+            //log ("Just published unknown [$xType] for ${name.toString()} payload ${state.toString()}","LOG")
             category="unknown_${xType.toLowerCase()}"
         }
             
@@ -4520,12 +4540,12 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
             log ("$device $category publish state BLOCKED","WARN")
             return
         }
-        if (!"${category}" == 'color') {  // hue was overwriting color map - need to check why I even do next publish TODO BUG ? 
-            log ("HSV value update blocked","DEBUG")
-            if (state!=null && category != 'color2') mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
+        if ("${category}" != 'color') {  // hue was overwriting color map - need to check why I even do next publish TODO BUG ? 
+            //log ("HSV value update blocked","DEBUG")
+            if (state!=null) mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
             else log ("State was null so didn't update MQTT for $sTopic","WARN")
         }
-        if (category=="unknown")    log ("Just published unknown [$xType] for ${name.toString()} payload ${state.toString()}","LOG")
+    
 	//	mqtt.publishMsg (sTopic+'/color/r',255,1,settings?.homieStatesPersist)  /? TODO What is this for ? HA ? Red ? but no g or b ??	
 	//  {"h":216,"s":100,"v":67}
 	//  TODO BUG refine this by checking name matches (if use this)
