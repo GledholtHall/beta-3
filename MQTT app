@@ -1167,7 +1167,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre beta 3d',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre beta 3c',1,true,atomicState.suppress)
         if (modes) currentMode()
 	//}
 
@@ -1621,7 +1621,7 @@ def registerSpecificAttribute (devList, count, attribute, handlerReq='auto'){   
                           lookupHandler(sen,cap.name,attr.name,handlerReq)
                           attCount++
                       }
-                      else log ("$sen [$attribute] attribute - attribute [$attr] not required for capability [$cap] ", "INFO")   // ERROR 
+                      else log ("$sen [$attribute] attribute - attribute [$attr] not required for capability [$cap] ", "DEBUG")   // ERROR 
                   }
           }
       count++
@@ -1711,7 +1711,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
            if (handlerReq != handler) log ( "Auto Handler Mismatch [${device} ${capability} ${attribute}] ReqHandler:${handlerReq} AutoHandler:${handler}", "KH")
            handler=handlerReq  // give it the requested one for now...
        }
-       else log ("Everything events subscribe to $device $attribute $handler","INFO") // Is attribute inclusion right here ???
+       else log ("Everything events subscribe to $device $attribute $handler","DEBUG") // Is attribute inclusion right here ???
     log ("Events subscribe to $device $attribute $handler","DEBUG") // Is attribute inclusion right here ???
     subscribe(device,attribute,handler)
 }
@@ -1853,12 +1853,12 @@ def synchDevices() {
 	    		colourDevices(null, myName, "hsv", hsv,it)
 //#NEW           
                 rgb=it.currentRGB
-                log ("New RGB value for $it is $rgb","KH")
-//                if (rgb!=null) colourDevices (null,myName,"RGB",rgb,it)
+                log ("New RGB attribute value for $it is $rgb","KH")
+                //if (rgb!=null) colourDevices (null,myName,"RGB",rgb,it)
             
                 color=it.currentColor
-                log ("New color value for $it is $color","KH")
-//                if (color!=null) colourDevices (null,myName,"color",color,it)
+                log ("New color attribute value for $it is $color","KH")
+                //if (color!=null) colourDevices (null,myName,"color",color,it)
 
             
                 normName=normalize(myName)
@@ -1936,7 +1936,7 @@ def synchDevices() {
                 //log ("Cap: $cap", "INFO")
                 cap.attributes.each { attrib ->
                     attName=attrib.name
-                    log ("Everything: [$myName] Cap: [$cap]  Att: [$attName] [${it.currentValue(attName)}]", "INFO") 
+                    log ("Everything: [$myName] Cap: [$cap]  Att: [$attName] [${it.currentValue(attName)}]", "LOG") 
                     if ("$cap"=="Switch" || "$cap"=='Light')  {  // Is this right to call both ?
                         switched(null, myName, attName, it.currentValue(attName),it) //,multiple)
                         switchedDim(null, myName, attName, it.currentValue(attName),it) //,multiple)
@@ -4264,7 +4264,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
         if (state==null) log ("State had a null value for $xName $xType","WARN")
 	}
     //property=device.getDataValue("properties")
-    //log ("Received a new colour event ${xType} from ${name}","TRACE")
+    log ("Received a new colour event ${xType} from ${name}","LOG")
 	normName = normalize(name)
 	normxName = normalize(xName)
 	if (settings?.homiePublish) {  //TODO case rather than if
@@ -4374,6 +4374,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
 				category='color'
             	//HAtype="RGB"
             if (!atomicState.suppress) {
+
 				mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"color",1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit','hsv',1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','hsv',1,true,atomicState.suppress)
@@ -4388,7 +4389,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
                         //log ("S: ${hueNum} ${satNum} ${valNum}","INFO")
                         //oldRGB=hsvToRGB (hueNum*3.6,satNum, valNum,"high")
                         RGB=hubitat.helper.ColorUtils.hsvToRGB([hueNum,satNum, valNum])
-                        mqtt.publishMsg (sTopic+'/'+category+'/rgb',hubitat.helper.ColorUtils.rgbToHEX(RGB),1,true) 
+                        mqtt.publishMsg (sTopic+'/'+category+'/rgb',hubitat.helper.ColorUtils.rgbToHEX(RGB),1,true)
                         mqtt.publishMsg (sTopic+'/'+category,"${LHueNum},${satNum},${valNum}",1,true)             
 				//UOM="%"
 
@@ -4410,18 +4411,27 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
 				//mqtt.publishMsg (sTopic+'/color',"${state[0]},${state[1]},${state[2]}",1,settings?.homieStatesPersist)
 	   			mqtt.publishMsg (sTopic+'/color/$format','hsv',1,true,atomicState.suppress)
             }
-               //jwilliams for Ikea Tradfri tolerance           
+    //jwilliams for Ikea Tradfri tolerance  // I may have messed this up again now                    
+            if (state[0] != null) hue = state[0].intValue()
+            else {
+                hue = device.currentValue("hue")
+                //state[0]=hue
+            }
+            LHueNum = (hue*3.6).toInteger()
+            if (state[1] != null) sat = state[1].intValue()
+            else {
+                   sat=device.currentValue("saturation")
+                   //state[1]=sat
+            }
+            if (state[2] != null) val = state[2].intValue()
+            else {
+                   val=device.currentValue("level")
+                   //state[2]=level
+            }    
+     // end jwilliams
             
-               //      int hue= state[0].intValue()
-               int hue = 0
-               if (state[0] != null) state[0].intValue()  
-               LHueNum = (hue*3.6).toInteger()
-               //       int sat= state[1].intValue()
-               int sat = 0
-               if (state[1] != null) state[1].intValue()
-               if (val==null) val=99
-               // end jwilliams
-                mqtt.publishMsg (sTopic+'/color',"${LHueNum},${sat},${val}",1,settings?.homieStatesPersist)
+        
+            mqtt.publishMsg (sTopic+'/color',"${LHueNum},${sat},${val}",1,settings?.homieStatesPersist)
 		        //mqtt.publishMsg (sTopic+'/color','{"h":'+state[0].toString()+',"s":'+state[1].toString()+',"v":'+state[2].toString()+'}',1,settings?.homieStatesPersist)
                 //if (state[2] == null) int val=99 else int val=state[2].intValue()     
                 //oldRGB=hsvToRGB (hue*3.6,sat, val,"high")
@@ -4490,7 +4500,11 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
             }
  
         
-        if (category=="unknown") log ("Need to handle ${xType}  - for ${name.toString()} in RGB colour", "WARN")
+        if (category=="unknown") {
+            log ("Need to handle ${xType}  - for ${name.toString()} in RGB colour", "WARN")
+            category="unknown_${xType.toLowerCase()}"
+        }
+            
         if (!atomicState.suppress){
             addProperty(sTopic,category)
 			mqtt.publishMsg (sTopic+'/$name',name.toString(),1,true) 
@@ -4502,16 +4516,16 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
         if (state=="on") state = "true" 
 		else if (state=='off') state = "false"  // TODO customisable
         // if (category == 'unknown' ) mqtt.publishMsg (sTopic+'/'+category + '/' + xType,state.toString(),1,settings?.homieStatesPersist)
-        if ("${category}" == 'color') {  // hue was overwriting color map - need to check why I even do next publish TODO BUG ? 
-                log ("Hue value update blocked","DEBUG")
-        }
         if (!dAttIsEnabled(device,category)) {
             log ("$device $category publish state BLOCKED","WARN")
             return
         }
-        if (state!=null) mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
-        else log ("State was null so didn't update MQTT for $sTopic","WARN")
-        if (category=="unknown")    log ("Just published unknown for for ${name.toString()} payload ${state.toString()}","LOG")
+        if (!"${category}" == 'color') {  // hue was overwriting color map - need to check why I even do next publish TODO BUG ? 
+            log ("HSV value update blocked","DEBUG")
+            if (state!=null && category != 'color2') mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)
+            else log ("State was null so didn't update MQTT for $sTopic","WARN")
+        }
+        if (category=="unknown")    log ("Just published unknown [$xType] for ${name.toString()} payload ${state.toString()}","LOG")
 	//	mqtt.publishMsg (sTopic+'/color/r',255,1,settings?.homieStatesPersist)  /? TODO What is this for ? HA ? Red ? but no g or b ??	
 	//  {"h":216,"s":100,"v":67}
 	//  TODO BUG refine this by checking name matches (if use this)
