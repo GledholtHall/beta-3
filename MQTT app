@@ -4488,8 +4488,8 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
                 //int mireds=(int)1000000/state.toInteger()
                 int mireds=state.toInteger() //@jwilliams
                 if (mireds>1000) mireds=(int)1000000/mireds // was Kelvin
-                mqtt.publishMsg (sTopic+'/'+category+'/mireds',"${mireds}",1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+category+'/temp',"${mireds}",1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+category+'/mireds',"${mireds}",1,true)
+                mqtt.publishMsg (sTopic+'/'+category+'/temp',"${mireds}",1,true)
 				//UOM="%"
 
 		}
@@ -5624,7 +5624,7 @@ return true
 }
 
 // def cmdEvent (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
-def commandP (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+def commandP_X (name,state,payload,cmd,topic) {  // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
 	// TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
 	//def data = parseJson(evt.data)
 	log ("MQTT set command received for " + name + " " + cmd + " " + state,"INFO")
@@ -6808,4 +6808,345 @@ def sendPayload(topic,payload) {
 	log ("Send MQTT " + topic + " " + payload, "TRACE")
     mqtt = getChildDevice("MQTT: Child device driver")
 	mqtt.publishMsg (topic,payload,1,settings?.homieStatesPersist)
+}
+
+//=========================================================================================================================== trial methods
+
+def findDeviceByName(name) {
+    matchDevice = null
+    settingsDevices = [settings?.everything, settings?.switches, settings?.dimmers, 
+        settings?.colour, settings?.colourT, settings?.locks, settings?.garagedoors, 
+        settings?.windowshades, settings?.valves, settings?.thermostats, settings?.keypads]
+    settingsDevices.find{
+        if (matchDevice != null) {
+            return true
+        }
+        it.find{
+            if (it.displayName==name){    
+                matchDevice = it
+                return true
+            }
+        }
+    }
+    return matchDevice
+}
+
+
+def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+    // TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
+    //def data = parseJson(evt.data)
+    log("MQTT set command received for " + name + " " + cmd + " " + state + " " + topic + " " + payload, "WARN")
+    normName = name
+    matchName = name
+    found = false
+    cTime = now()
+    mqtt = getChildDevice("MQTT: Child device driver")
+    //     DNI=atomicState.newMap[normName]
+    log("$cmd received $state", "TRACE")
+    if (atomicState.nameMap[normName] == null) {
+        log("No name map for ${normName} so assume Hubitat basic topic or homie /hub", "INFO") // could check from topic.topic[0]
+        matchName = normName
+    } else {
+        matchName = atomicState.nameMap[normName]
+        found = true
+    }
+    log("$cmd received $state", "TRACE")
+    dMatch = false
+    everyThing == (settings?.everything)
+    log("Everything Lookup for  " + name + " is " + matchName + " [" + atomicState.nameMap[index] + "] ", "LOG")
+
+    if (matchName == "hub") {
+        if (cmd == "mode") {
+            if (location.mode != state) {
+                if (location.modes?.find {
+                        matchDevice.name == state
+                    }) {
+                    location.setMode(state)
+                } else {
+                    log("Hub Mode Cmd: unknown mode $state", "ERROR")
+                }
+            }
+        }
+        return
+    }
+
+    matchDevice = findDeviceByName(matchName)
+    log("Device Match - " + matchDevice?.displayName + " - for command $cmd", "INFO")
+
+    if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
+        log("Was here in commandP", "WARN")
+		if (matchDevice != null) {
+			log("Here in commandP $cmd", "WARN")
+			proceed = dAttIsEnabled(it, cmd)
+			if (!proceed) {
+				log("$device: ../onoff/set BLOCKED", "WARN")
+				return
+			}
+			OnValues = "on,true,yes,1"
+			OffValues = "off,false,no,0"
+
+			if (OnValues.contains(state.toLowerCase())) {
+				matchDevice.on()
+			} else if (OffValues.contains(state.toLowerCase())) {
+				matchDevice.off()
+			} else log("Unknown state value " + state + " - need to add to lookup", "WARN")
+
+		}
+
+    } else if (cmd == "dim") {
+        openHAB = false
+        log("Incoming dim /set $state", "WARN")
+        val = "${state}"
+        if (openHAB) intLevel = (Float.parseFloat(val) * 100).toInteger()
+        else intLevel = state.toInteger()
+        if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
+        {
+			if (matchDevice != null) {
+                    matchDevice.setLevel(intLevel, 1)
+                    dMatch = true
+            }
+		}
+
+    } else if (cmd == "color") {
+		if (matchDevice != null) {
+			if (state[0] == '#') {
+				try {
+					RGB = hubitat.helper.ColorUtils.hexToRGB(state)
+					HSV = hubitat.helper.ColorUtils.rgbToHSV(RGB)
+					HSL = [: ]
+					HSL.put('hue', HSV[0].toInteger())
+					HSL.put('saturation', HSV[1].toInteger())
+					HSL.put('level', HSV[2].toInteger())
+					matchDevice.setColor(HSL)
+				} catch (e) {
+					log("#RRGGBB color /set error:  " + e, "ERROR")
+				}
+				dmatch = true
+			} else {
+				colour = payload
+				try {
+					hue = -1
+					if (payload[0] != null) {
+						float h = Float.parseFloat(payload[0])
+						h = (h / 3.6) + 0.5
+						hue = (int)(h)
+						if (hue > 100) hue = 100
+						else if (hue < 0) hue = 0
+					}
+					sat = -1
+					if (payload[1] != null) {
+						float s = Float.parseFloat(payload[1]) + 0.5
+						sat = (int)(s)
+						if (sat > 100) sat = 100
+						else if (sat < 0) sat = 0
+					}
+					/*
+					if (payload[2] != null) {
+						float v = Float.parseFloat(payload[1]) + 0.5
+						val = (int) (v)
+						if (val>100) val=100
+						else if (val<0) val=0
+					}
+		*/
+					// (Untested change request)
+					if (payload[2] != null) {
+						val = payload[2].toInteger()
+						if (val > 100) val = 100
+						else if (val < 0) val = 0
+					} else val = -1
+
+					//
+
+					log("Color data is $payload   hue:$hue    sat:$sat    value:$val", "TRACE")
+
+					if (val == -1) { // from HA - has no 'level'
+						if (hue >= 0) matchDevice.setHue(hue)
+						if (sat >= 0) matchDevice.setSaturation(sat)
+					} else if ((hue >= 0) && (sat >= 0) && (val >= 0)) //all present
+					{
+						HSL = [: ]
+						HSL.put('hue', hue)
+						HSL.put('saturation', sat)
+						HSL.put('level', val)
+						log("HSL set value is $HSL", "INFO")
+						matchDevice.setColor(HSL)
+						dMatch = true
+					}
+				} catch (e) {
+					log("HSV colour set error format is h,s,v :  " + e, "ERROR")
+				}
+			}
+		}
+
+    } else if (cmd == "hsv") {
+		if (matchDevice != null) {
+			matchDevice.setSaturation(payload[1].toInteger())
+			matchDevice.setHue(payload[0].toInteger())
+			matchDevice.setLevel(payload[2].toInteger())
+			dMatch = true
+		}
+
+    } else if (cmd == "hue") {
+		if (matchDevice != null) {
+			matchDevice.setHue(payload[0].toInteger())
+        }
+    } else if (cmd == "level") { // currently only searching colour bulbs for this as it's a RGB event
+		if (matchDevice != null) {
+			matchDevice.setLevel(payload[0].toInteger())
+    } else if (cmd == "saturation") {
+		if (matchDevice != null) {
+                matchDevice.setSaturation(payload[0].toInteger())
+        }
+    } else if (cmd == "color-temperature") { // This is from the homie topic       //TOD these on homie are normalised names - need to match as such i.e. as in thermostats below TODO BUG ??
+        if (matchDevice != null) {
+            int cKelvin = state.toInteger()
+            int cMired = 0
+            if (cKelvin > 1000) cMired = (int) 1000000 / cKelvin // was Kelvin
+            else { // wasalready  mireds
+                cMired = cKelvin
+                cKelvin = (int) 1000000 / cMired
+            }
+            matchDevice.setColorTemperature(cKelvin)
+        }
+
+    }
+    //Casey <
+    else if (cmd == "lock") {
+		if (matchDevice != null) {
+                // DUPLICATED TODO combine this as one method for all
+                log("Surmising required state [" + state + "] for " + name, "DEBUG")
+                LockValues = "true"
+                UnlockValues = "false"
+                if (LockValues.contains(state.toLowerCase())) {
+                    //if (devType == "system")
+                    matchDevice.lock() // think can only be a system type here
+                    //else device.toON()
+                } else if (UnlockValues.contains(state.toLowerCase())) {
+                    if (settings?.allowMqttUnlock) {
+                        matchDevice.unlock() // think can only be a system type here                    
+                    } else {
+                        log("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'", "WARN")
+                    }
+                } else log("Unknown state value " + state + " - need to add to lookup", "WARN")
+        }
+    }
+    //Casey >        
+    else if (cmd == "contact") {
+		if (matchDevice != null) {
+                // DUPLICATED TODO combine this as one method for all
+                log("Surmising required state [" + state + "] for " + name, "DEBUG")
+                CloseValues = "close"
+                OpenValues = "open"
+                if (CloseValues.contains(state.toLowerCase())) {
+                    //if (devType == "system")
+                    matchDevice.close() // think can only be a system type here
+                    //else device.toON()
+                } else if (OpenValues.contains(state.toLowerCase())) {
+                    //if (settings?.allowMqttUnlock) {
+                    matchDevice.open() // think can only be a system type here                    
+                    // } else {
+                    //     log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
+                    // }
+                } else log("Unknown state value " + state + " - need to add to lookup", "WARN")
+        }
+    } else if (cmd == "battery" || cmd == "motion" || cmd == "temperature") {
+        log("Trying to 'set' a sensor value ${cmd} for $name", "WARN")
+        log("   ... only 'onoff' 'dim' 'color' 'color-temperature' 'window shades' 'valve' 'garage doors'and 'locks' are settable currently", "WARN")
+    } else if (cmd == "valve") {
+		if (matchDevice != null) {
+			// DUPLICATED TODO combine this as one method for all
+			log("Surmising required state [" + state + "] for " + name, "DEBUG")
+			CloseValues = "closed"
+			OpenValues = "open"
+			if (CloseValues.contains(state.toLowerCase())) {
+				// if (devType == "system")
+				matchDevice.close() // think can only be a system type here
+				//else device.toON()
+			} else if (OpenValues.contains(state.toLowerCase())) {
+				//if (settings?.allowMqttUnlock) {
+				matchDevice.open() // think can only be a system type here                    
+				// } else {
+				//     log ("To enable MQTT unlock, you must enable in MQTT app settings 'configuration'","WARN")
+				// }
+			} else log("Unknown state value " + state + " - need to add to lookup", "WARN")
+		}
+    } else if (cmd == "heating-setpoint" || cmd == "cooling-setpoint" || cmd == "mode" || cmd == "fanmode") { // Thermostat temporary handler shouldnt be in sensors
+		if (matchDevice != null) {
+			//log ("Changing $cmd of ${matchDevice.name} to $state","ERROR")                        
+			if (cmd == "heating-setpoint") {
+				Float setTemp = state.toFloat() // string seemed to error -- just rechecking
+				matchDevice.setHeatingSetpoint(setTemp)
+				//matchDevice.setHeatingSetpoint(state)
+			} else if (cmd == "cooling-setpoint") {
+				setTemp = state.toFloat()
+				//thermDev.setCoolingSetpoint(state)
+				matchDevice.setCoolingSetpoint(setTemp)
+			} else if (cmd == "mode") matchDevice.setThermostatMode(state)
+			else if (cmd == "fanmode") matchDevice.setThermostatFanMode(state)
+    } else if (cmd == "securitymode") {
+        if (state == '----') return
+        // >> @jwilliams
+		if (matchDevice != null) {
+			setStatus = ""
+			ArmValues = "armed night, armed home, armed away"
+			if (ArmValues.contains(state.toLowerCase())) {
+				if (mqttKeypadMode == "No Keycode Needed") {
+					setStatus = state
+				} else if ((mqttKeypadMode == "Keycode to Arm only" || mqttKeypadMode == "Keycode to Arm/Disarm") && mqttKeypadCode == payload[1]) {
+					setStatus = state
+				}
+			} else if (state == "disarm") {
+				if (mqttKeypadMode == "Keycode to Arm/Disarm") {
+					if (mqttKeypadCode == payload[1]) setStatus = 'disarm'
+				} else if (mqttKeypadMode != "No control of keypad") {
+					setStatus = 'disarm'
+				}
+
+			}
+			log("Setting Status to ${setStatus}", "DEBUG")
+			if (setStatus == 'armed night') matchDevice.armNight()
+			else if (setStatus == 'armed home') matchDevice.armHome()
+			else if (setStatus == 'armed away') matchDevice.armAway()
+			else if (setStatus == 'disarm') matchDevice.disarm()
+			// << @jwilliams             
+			else {
+				String code = matchDevice.currentLockCodes.toString()
+				mqtt.publishMsg("homie/${atomicState.normHubName}/${matchName}/securitymode/set", '----', 1, false)
+				//if (code.contains(':"' + state + '"}')) matchDevice.disarm()
+				if (code.contains('{"name":"MQTT","code":"' + state + '"}')) matchDevice.disarm()
+			}
+        }
+        if (dMatch) return
+    } else if (cmd == "variable") {
+        gVariables = (settings?.gVars)
+        gVariables.each {
+            //if (normalize(matchDevice.displayName)==matchName){
+            if (matchDevice.displayName == matchName) {
+                matchDevice.setVariable(state)
+                dMatch = true
+            }
+            return dMatch
+        }
+        if (dMatch) return
+        gVariables = (settings?.globVars)
+        gVariables.each {
+            //if (normalize(matchDevice.displayName)==matchName){
+            if (matchDevice.displayName == matchName) {
+                matchDevice.setVariable(state)
+                dMatch = true
+            }
+            return dMatch
+        }
+        if (dMatch) return
+    } else if (cmd == "speech") {
+		if (matchDevice != null) {
+			matchDevice.speak(state, 30)
+        }
+    } else if (cmd == "music") {
+		if (matchDevice != null) {
+			log("Music Command not yet implemented " + musicDec + " [" + state + "}", "WARN")
+        }
+    } else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
+}
+}
 }
