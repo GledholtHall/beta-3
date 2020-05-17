@@ -5611,7 +5611,10 @@ def sensorUOM(evt) {
 */
 def dAttIsEnabled(device,attr)
 {
-    
+    if (device==null) {
+        log ("Null device - attribute is $attr")
+        return
+    }
     property=device.getDataValue("properties")
     if (property != null) {
             if (!property.contains(attr)) {
@@ -6871,13 +6874,14 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     }
 
     matchDevice = findDeviceByName(matchName)
-    log("Device Match - " + matchDevice?.displayName + " - for command $cmd", "INFO")
+    log("Device Matched - " + matchDevice?.displayName + " - for command $cmd", "INFO")
 
     if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
         log("Was here in commandP", "WARN")
 		if (matchDevice != null) {
-			log("Here in commandP $cmd", "WARN")
-			proceed = dAttIsEnabled(it, cmd)
+			//log("Here in commandP $cmd", "WARN")
+            //proceed = dAttIsEnabled(it, cmd)
+			proceed = dAttIsEnabled(matchDevice, cmd)
 			if (!proceed) {
 				log("$device: ../onoff/set BLOCKED", "WARN")
 				return
@@ -6993,12 +6997,14 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     } else if (cmd == "level") { // currently only searching colour bulbs for this as it's a RGB event
 		if (matchDevice != null) {
 			matchDevice.setLevel(payload[0].toInteger())
+        }
     } else if (cmd == "saturation") {
 		if (matchDevice != null) {
                 matchDevice.setSaturation(payload[0].toInteger())
         }
     } else if (cmd == "color-temperature") { // This is from the homie topic       //TOD these on homie are normalised names - need to match as such i.e. as in thermostats below TODO BUG ??
-        if (matchDevice != null) {
+        log.error  "HERE"
+            if (matchDevice != null) {
             int cKelvin = state.toInteger()
             int cMired = 0
             if (cKelvin > 1000) cMired = (int) 1000000 / cKelvin // was Kelvin
@@ -7006,6 +7012,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                 cMired = cKelvin
                 cKelvin = (int) 1000000 / cMired
             }
+            log.error "Heree $matchDevice $cKelvin"
             matchDevice.setColorTemperature(cKelvin)
         }
 
@@ -7149,4 +7156,4 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     } else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
 }
 }
-}
+
