@@ -7003,7 +7003,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                 matchDevice.setSaturation(payload[0].toInteger())
         }
     } else if (cmd == "color-temperature") { // This is from the homie topic       //TOD these on homie are normalised names - need to match as such i.e. as in thermostats below TODO BUG ??
-        log.error  "HERE"
             if (matchDevice != null) {
             int cKelvin = state.toInteger()
             int cMired = 0
@@ -7012,7 +7011,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                 cMired = cKelvin
                 cKelvin = (int) 1000000 / cMired
             }
-            log.error "Heree $matchDevice $cKelvin"
             matchDevice.setColorTemperature(cKelvin)
         }
 
