@@ -1532,7 +1532,7 @@ def sensorSubscribes(count) {   // These are report only attributes- they have n
         count = registerSpecificAttribute (carbonmonoxidesensors,count,'carbonmonoxide','sensorDevices')
         count = registerSpecificAttribute (voltagesensors,count,'voltage','sensorDevices')
         count = registerSpecificAttribute (powersensors,count,'power','sensorDevices')
-        count = registerSpecificAttribute (watersensors,count,'water','sensorDevices')
+        count = registerSpecificAttribute (watersensors,count,'water','sensorDevices')  
         count = registerSpecificAttribute (globVars,count,'variable','sensorDevices')  //  ?? Not a sensor as updateable
         count = registerSpecificAttribute (gVars,count,'variable','sensorDevices')  //  ?? Not a sensor as updateable
     return (count)
@@ -6845,6 +6845,10 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     // TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
     //def data = parseJson(evt.data)
     log("MQTT set command received for " + name + " " + cmd + " " + state + " " + topic + " " + payload, "WARN")
+    if (state=='' || state==null) {
+        log ("An empty or null state value was received from a ../set topic and was BLOCKED from writing to an attribute as it would set it to null","WARN")
+        return
+    }
     normName = name
     matchName = name
     found = false
@@ -7130,10 +7134,8 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
             log.error "dMatch is $dMatch"
         if (dMatch) return
-        
     } else if (cmd == "variable") {
-        
-        
+        if (state=='' || state==null) return
         if (matchDevice!=null){
             matchDevice.setVariable(state)
         }
@@ -7160,7 +7162,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
         if (dMatch) return
  */
-    } else if (cmd == "speech") {
+       } else if (cmd == "speech") {
 		if (matchDevice != null) {
 			matchDevice.speak(state, 30)
         }
