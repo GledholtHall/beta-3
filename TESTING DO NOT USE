@@ -1555,9 +1555,9 @@ def deviceSubscribes(count) {  // BUG Here I might only have enabled one capabil
         count = registerSpecificCapability (thermostats,count,'Thermostat','thermostatDevices')
         count = registerSpecificCapability (buttonspush,count,'PushableButton','buttons')
         count = registerSpecificCapability (buttonshold,count,'HoldableButton','buttons')
-        count = registerSpecificCapability (buttonstap,count,'TappableButton','buttons')
+        count = registerSpecificCapability (buttonstap,count,'TapableButton','buttons')
         count = registerSpecificCapability (buttonsrelease,count,'ReleasableButton','buttons')
-        count = registerSpecificCapability (buttonsdtap,count,'DoubleTappableButton','buttons')
+        count = registerSpecificCapability (buttonsdtap,count,'DoubleTapableButton','buttons')
         count = registerSpecificCapability (alarms,count,'Alarm','otherDevices')
         count = registerSpecificCapability (bulbs,count,'Bulb','otherDevices')
         count = registerSpecificCapability (chimes,count,'Chime','otherDevices')
@@ -1597,16 +1597,13 @@ def registerSpecificCapability (devList, count, capability, handlerReq='auto'){ 
           dev.capabilities.each { cap ->
               if ("${cap}" == "${capability}") {
                   cap.attributes.each { attr ->
-                          log ("$dev Specific Cap Registration of $cap $attr", "KGREEN")
-                      
                           prop=whatProperty(attr.name)
                           normName=normalize(dev.displayName)
                           key = "homie/${atomicState.normHubName}/$normName"
                           if (prop!='unknown') addProperty (key,prop,dev)
-
                           lookupHandler(dev,cap.name,attr.name,handlerReq)
                           attCount++
-                      }                     
+                      } 
                   }
               else log ("Capability [$cap][$capability] not required for device [$dev] ", "DEBUG")  
           }
@@ -1665,7 +1662,7 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
                 
                 
 
-                // released doubleTapped pushed numberOfButtons held
+                // released doubleTaped pushed numberOfButtons held
             }
             //capCount++
 	    }
@@ -2251,7 +2248,7 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
-                def attrs = dev.supportedAttributes
+                def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
             if (type == 'none') type=attribute
 			if(dev.currentValue(attribute)!=null){
 				log ("## " + dev.name + " $attribute  ${dev.currentValue(attribute)}","TRACE") // + ${attrs}
@@ -5686,7 +5683,6 @@ def commandP_X (name,state,payload,cmd,topic) {  // 'set' command from homie for
         everything.any {
             if (it.displayName==matchName){
                 dMatch=true
-                log ("Here in commandP $cmd","WARN")
                 proceed=dAttIsEnabled(it,cmd)
                 if (!proceed) {
                     log ("$device: ../onoff/set BLOCKED","WARN")
@@ -7132,7 +7128,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 				if (code.contains('{"name":"MQTT","code":"' + state + '"}')) matchDevice.disarm()
 			}
         }
-            log.error "dMatch is $dMatch"
         if (dMatch) return
     } else if (cmd == "variable") {
         if (state=='' || state==null) return
