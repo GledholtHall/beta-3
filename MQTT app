@@ -1047,6 +1047,7 @@ def initialize() {
     else if (myID=="8e703d9adefe69d652315cf6159671b7") atomicState.myHub=true //42
     else if (myID=="e947798518d8f4b041d701d122c38b30") atomicState.myHub=true //44
     else if (myID=="1234") atomicState.myHub=true  //43 TODO UPDATE THIS ONE
+atomicState.myHub=false
     countTry=5
     aborting=false
     atomicState.abort=false  // just added remove later
@@ -1163,11 +1164,11 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$homie','3.0.1',1,true,atomicState.suppress) 
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation','groovy:uk.co.ukusa.mqtt',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/version','3',1,true)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','pre beta',1,true)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/name','beta',1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3',1,true,atomicState.suppress)
         if (modes) currentMode()
 	//}
 
@@ -1532,13 +1533,13 @@ def sensorSubscribes(count) {   // These are report only attributes- they have n
         count = registerSpecificAttribute (carbonmonoxidesensors,count,'carbonmonoxide','sensorDevices')
         count = registerSpecificAttribute (voltagesensors,count,'voltage','sensorDevices')
         count = registerSpecificAttribute (powersensors,count,'power','sensorDevices')
-        count = registerSpecificAttribute (watersensors,count,'water','sensorDevices')
+        count = registerSpecificAttribute (watersensors,count,'water','sensorDevices')  
         count = registerSpecificAttribute (globVars,count,'variable','sensorDevices')  //  ?? Not a sensor as updateable
         count = registerSpecificAttribute (gVars,count,'variable','sensorDevices')  //  ?? Not a sensor as updateable
     return (count)
 }
 
-def deviceSubscribes(count) {  // BUG Here I might only have enabled one capability but I am subscribing to all capabilities and attributes - need to only use attributes that are in the capability
+def deviceSubscribes(count) {  // TODO check - Here I might only have enabled one capability but I am subscribing to all capabilities and attributes - need to only use attributes that are in the capability
     mqtt = getChildDevice("MQTT: Child device driver")
         log ("deviceSubscribes","LOG")
 
@@ -1555,9 +1556,9 @@ def deviceSubscribes(count) {  // BUG Here I might only have enabled one capabil
         count = registerSpecificCapability (thermostats,count,'Thermostat','thermostatDevices')
         count = registerSpecificCapability (buttonspush,count,'PushableButton','buttons')
         count = registerSpecificCapability (buttonshold,count,'HoldableButton','buttons')
-        count = registerSpecificCapability (buttonstap,count,'TappableButton','buttons')
+        count = registerSpecificCapability (buttonstap,count,'TapableButton','buttons')
         count = registerSpecificCapability (buttonsrelease,count,'ReleasableButton','buttons')
-        count = registerSpecificCapability (buttonsdtap,count,'DoubleTappableButton','buttons')
+        count = registerSpecificCapability (buttonsdtap,count,'DoubleTapableButton','buttons')
         count = registerSpecificCapability (alarms,count,'Alarm','otherDevices')
         count = registerSpecificCapability (bulbs,count,'Bulb','otherDevices')
         count = registerSpecificCapability (chimes,count,'Chime','otherDevices')
@@ -1593,20 +1594,18 @@ def everythingSubscribes(count) {
 
 
 def registerSpecificCapability (devList, count, capability, handlerReq='auto'){      //registers handlers for a specific device capability
+    changes=true
      devList.each { dev ->
           dev.capabilities.each { cap ->
               if ("${cap}" == "${capability}") {
                   cap.attributes.each { attr ->
-                          log ("$dev Specific Cap Registration of $cap $attr", "KGREEN")
-                      
                           prop=whatProperty(attr.name)
                           normName=normalize(dev.displayName)
                           key = "homie/${atomicState.normHubName}/$normName"
-                          if (prop!='unknown') addProperty (key,prop,dev)
-
+                          if (changes && prop!='unknown') addProperty (key,prop,dev)
                           lookupHandler(dev,cap.name,attr.name,handlerReq)
                           attCount++
-                      }                     
+                      } 
                   }
               else log ("Capability [$cap][$capability] not required for device [$dev] ", "DEBUG")  
           }
@@ -1618,22 +1617,29 @@ return (count)
 }
 
 def registerSpecificAttribute (devList, count, attribute, handlerReq='auto'){      //registers handlers for a specific device capability 
+     changes=true
      devList.each { dev ->
+                       if (attribute=='variable'){   //variables don't list as attributes 
+                          normName=normalize(dev.displayName)
+                          key = "homie/${atomicState.normHubName}/$normName"
+                          if (changes) addProperty (key,'variable',dev)
+                          lookupHandler(dev,'Variable','variable',handlerReq)
+                          attCount++  
+                          return false
+                      }
+
           dev.capabilities.each { cap ->
                   cap.attributes.each { attr ->
                       if ("${attr}" == "${attribute}") {
-                          log ("$dev Specific Att Registration of $cap $attr", "KGREEN")
-                          
+                          log ("$dev Specific Att Registration of $cap $attr", "KGREEN")                          
                           prop=whatProperty(attr.name)
                           normName=normalize(dev.displayName)
                           key = "homie/${atomicState.normHubName}/$normName"
-                          if (prop!='unknown') addProperty (key,prop,dev)
-                          
-
+                          if (changes && prop!='unknown') addProperty (key,prop,dev)
                           lookupHandler(dev,cap.name,attr.name,handlerReq)
                           attCount++
                       }
-                      else log ("$dev [$attribute] attribute - attribute [$attr] not required for capability [$cap] ", "DEBUG")   // ERROR 
+                      else log ("$dev [$attribute] attribute - attribute [$attr] not required for capability [$cap] ", "KGREEN")   // ERROR 
                   }
           }
       count++
@@ -1643,15 +1649,16 @@ return (count)
 
 def registerAll (devList,count,handlerReq='auto') {  //registers handlers for every capability and attribute a device has
     //  a variable attribute will not get registered as it has no matching capability !
+        changes=true
         devList.each { dev ->
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
-                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "TRACE")
+                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KGREEN")
 
                 prop=whatProperty(attr.name)
                 normName=normalize(dev.displayName)
                 key = "homie/${atomicState.normHubName}/$normName"
-                if (prop!='unknown') addProperty (key,prop,dev)
+                if (changes && prop!='unknown') addProperty (key,prop,dev)
                 
                 //subscribe(dev, attr.name, buttons)
                 lookupHandler(dev,cap.name,attr.name,handlerReq)
@@ -1659,7 +1666,7 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
                 
                 
 
-                // released doubleTapped pushed numberOfButtons held
+                // released doubleTaped pushed numberOfButtons held
             }
             //capCount++
 	    }
@@ -1838,7 +1845,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
    case "Outlet":   
    case "RelaySwitch":
    case "Valve":
-   case "Variable":  // never happens
+   case "Variable":  // artificial
    case "WaterSensors":
    case "WindowShades":
        handler="otherDevices" 
@@ -2065,6 +2072,10 @@ def synchDevices() {
                 devLoopAll (it,"all","thermostatDevices")  // passing all devices here not just sensors BUG
                 return false
             }
+            else if (it.typeName.contains("OpenWeatherMap")){
+                devLoopAll (it,"all","sensorDevices")  // passing all devices here not just sensors BUG
+                return false
+            }
   
             else {  // Not a sensor or thermostat
                 if (settings?.HADiscovery && (!publishList.containsKey(myName))){
@@ -2095,6 +2106,8 @@ def synchDevices() {
                     else if ("$cap"=="Lock") locked(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
                     else if ("$cap"=="keypadDevices") keypadDevices(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
                     else if ("$cap"=="audioDevices") audioDevices(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
+                   // else if ("$cap"=="RealtiveHumidityMeasurement")  sensors(null, myName, attName, it.currentValue(attName),it) //,multiple)
+                   // else if ("$cap"=="TemperatureMeasurement")  sensors(null, myName, attName, it.currentValue(attName),it) //,multiple)
                     else {
                             log ("Unhandled so using otherDevices [$cap $attrib]","LOG")
                             otherDevices(null, myName, "$attrib", it.currentValue("$attrib"),it) //,multiple,dev)   //CHECK
@@ -2245,7 +2258,7 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
-                def attrs = dev.supportedAttributes
+                def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
             if (type == 'none') type=attribute
 			if(dev.currentValue(attribute)!=null){
 				log ("## " + dev.name + " $attribute  ${dev.currentValue(attribute)}","TRACE") // + ${attrs}
@@ -2264,7 +2277,7 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
                 else if (handler=="audioDevices") audioDevices(null, myName, type, dev.currentValue(attribute),dev) //,multiple)
 			}
             
-            else log("No [" + attribute + "] attribute value available for [${myName}]", "WARN")
+            else log("No [" + attribute + "] attribute value available for [${myName}]", "INFO")
 		}
 }
 
@@ -2779,6 +2792,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         else
         { 
             if (type=="button") log( "Buttons are not supported in HA Discovery","TRACE")
+            else if (type=="unknown") log ("Unknown Device type $type presented for HA MQTT Discovery advertise from device $name","INFO")
             else log ("Unknown Device type $type presented for HA MQTT Discovery advertise from device $name","WARN")
         }
         //Casey >
@@ -3740,7 +3754,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 			
             else {
 				category = 'unknown'
-				log ("t Unknown category for type #${xType}# reported by device ${name}","WARN")
+				log ("t Unknown category for type #${xType}# reported by device ${name}","INFO")
                 category = 'unknown_'+normalize(xType)
 			}
 			
@@ -3831,7 +3845,7 @@ def keypadDevices(evt, name=null, type=null, state=null, device=null, multiple=f
         }        
 			else {
 				category = 'unknown'
-				log ("[k] Unknown Category for type ${xType} reported by device ${name}","ERROR")
+				log ("[k] Unknown Category for type ${xType} reported by device ${name}","INFO")
 			}
 			
 			sTopic="homie/${atomicState.normHubName}/${normName}"     //+category
@@ -4081,7 +4095,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
       
 			else {
 				category = 'unknown'
-				log ("[o] Unknown Category for type ${xType} reported by device ${name}","KH")
+				log ("[o] Unknown Category for type ${xType} reported by device ${name}","INFO")
 			}			
 			sTopic="homie/${atomicState.normHubName}/${normName}"     //+category
 			//================  Limited homie spec implemenation ================
@@ -4198,7 +4212,7 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
  			else if (xType=='humidity'){
 				category='measure-humidity'
                 if (!atomicState.suppress){
-				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true,atomicState.suppress)
+				    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$unit','%',1,true,atomicState.suppress)
 				    mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true,atomicState.suppress)				
                 }
@@ -4343,7 +4357,7 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
                  }
 			else {
 				category = 'unknown'
-				log ("[s] Unknown Category for type ${xType} reported by device ${name}","WARN")
+				log ("[s] Unknown Category for type ${xType} reported by device ${name}","DEBUG")  // DEBUG because Unknowns are now converted to custom
 			}
 			
 			sTopic="homie/${atomicState.normHubName}/${normName}"     //+category
@@ -4358,7 +4372,17 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
 			mqtt.publishMsg (sTopic+'/$type',"sensor",1,true,atomicState.suppress)
             if (device!=null) mqtt.publishMsg (sTopic+'/-device-driver',device.typeName,1,true,atomicState.suppress)
             if (category=='unknown') {
-                mqtt.publishMsg (sTopic+'/'+category+'/'+xType,state.toString(),1,true) 
+                if (device.displayName!=lastDev) {
+                    counter=1
+                    addProperty(sTopic,'custom',device)
+                } else counter = counter +1
+                lastDev=device.displayName
+                mqtt.publishMsg (sTopic+'/custom',counter.toString(),1,true)
+                mqtt.publishMsg (sTopic+'/custom/$datatype','integer',1,true)
+                mqtt.publishMsg (sTopic+'/custom/$name',device.displayName,1,true)
+                mqtt.publishMsg (sTopic+'/custom/$retained','true',1,true)
+                mqtt.publishMsg (sTopic+'/custom/$settable','false',1,true)
+                mqtt.publishMsg (sTopic+'/custom/'+xType,state.toString(),1,true) 
             }
             else{
 			    mqtt.publishMsg (sTopic+'/'+category+'/$settable',settable,1,true,atomicState.suppress)   
@@ -4369,7 +4393,7 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
             }
         }
         if (category!='unknown') {
-            mqtt.publishMsg (sTopic+'/'+category+'/'+xType,state.toString(),1,true) 
+            //mqtt.publishMsg (sTopic+'/'+category+'/'+xType,state.toString(),1,true)   // DO WE NEED THIS ?
             if (state!=null) {
                 mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)  // <<<<<   This publishes the actual event value
                 checkNodes(9, name)
@@ -4440,7 +4464,7 @@ def colourDevices(evt, name=null,type=null, state=null, device=null) {
    // addProperty(sTopic,prop,device)
     
     if (!dAttIsEnabled(device,prop)) {
-            log ("$device [$xType] > [$prop] publish topics BLOCKED","WARN")
+            log ("$device [$xType] > [$prop] publish topics BLOCKED","INFO")
             return
         }
     else log ("$device [$xType] > [$prop] publish topics PASSED","TRACE")
@@ -4764,7 +4788,6 @@ def homieDimDev(name,type) {  //TODO merge with above
 		temp.add(name)
 		atomicState.dimDevices = temp
 	}
-		log ("??? " + settings?.Homie_dim,"ERROR")
     if ((settings?.Homie_dim != null) && (settings?.Homie_dim.contains (name))) createChildDevice (name, "dim", "homie", name)
 }
 
@@ -5357,7 +5380,8 @@ def formatP (name,format) {
     //def data = parseJson(evt.data)
     child=getChildDevice("MQTT:homie_"+name)
     if (child != null){
-        index=data.format.lastIndexOf(":") + 1
+     // index=data.format.lastIndexOf(":") + 1  
+        index=format.lastIndexOf(":") + 1
         if (index >0) child.updateDataValue("max_Level",format.substring(index))
     }
      
@@ -5680,7 +5704,6 @@ def commandP_X (name,state,payload,cmd,topic) {  // 'set' command from homie for
         everything.any {
             if (it.displayName==matchName){
                 dMatch=true
-                log ("Here in commandP $cmd","WARN")
                 proceed=dAttIsEnabled(it,cmd)
                 if (!proceed) {
                     log ("$device: ../onoff/set BLOCKED","WARN")
@@ -6302,7 +6325,7 @@ def LabelDeviceP(dID,label) {   // rename to reNameDevice ??
 		log ("reName: Child doesn't exist (no state or unsupported type ?) "+ dID + " " + label , "TRACE")
 		return  
        }
-	child.label= data.label
+	child.label= label
 	log ("reNamed  $child.displayName to $label" ,"TRACE")
 }
 
@@ -6819,7 +6842,7 @@ def findDeviceByName(name) {
     matchDevice = null
     settingsDevices = [settings?.everything, settings?.switches, settings?.dimmers, 
         settings?.colour, settings?.colourT, settings?.locks, settings?.garagedoors, 
-        settings?.windowshades, settings?.valves, settings?.thermostats, settings?.keypads]
+        settings?.windowshades, settings?.valves, settings?.thermostats, settings?.keypads, settings?.gVars,settings?.globVars]
     settingsDevices.find{
         if (matchDevice != null) {
             return true
@@ -6839,6 +6862,10 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     // TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
     //def data = parseJson(evt.data)
     log("MQTT set command received for " + name + " " + cmd + " " + state + " " + topic + " " + payload, "WARN")
+    if (state=='' || state==null) {
+        log ("An empty or null state value was received from a ../set topic and was BLOCKED from writing to an attribute as it would set it to null","WARN")
+        return
+    }
     normName = name
     matchName = name
     found = false
@@ -7088,6 +7115,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 				matchDevice.setCoolingSetpoint(setTemp)
 			} else if (cmd == "mode") matchDevice.setThermostatMode(state)
 			else if (cmd == "fanmode") matchDevice.setThermostatFanMode(state)
+        }
     } else if (cmd == "securitymode") {
         if (state == '----') return
         // >> @jwilliams
@@ -7123,6 +7151,12 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
         if (dMatch) return
     } else if (cmd == "variable") {
+        if (state=='' || state==null) return
+        if (matchDevice!=null){
+            matchDevice.setVariable(state)
+        }
+        
+/*       
         gVariables = (settings?.gVars)
         gVariables.each {
             //if (normalize(matchDevice.displayName)==matchName){
@@ -7143,7 +7177,8 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
             return dMatch
         }
         if (dMatch) return
-    } else if (cmd == "speech") {
+ */
+       } else if (cmd == "speech") {
 		if (matchDevice != null) {
 			matchDevice.speak(state, 30)
         }
@@ -7153,5 +7188,5 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
     } else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
 }
-}
+
 
