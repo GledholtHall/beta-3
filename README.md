@@ -1,4 +1,5 @@
-# pre beta3
+# beta 3 RC - the import URL's will be wrong in these RC versions
+
 H E update
 For testing only 
 
