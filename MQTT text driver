@@ -1,5 +1,4 @@
-// pre Beta 3a
-
+// beta 3
 metadata 
 {
 	definition(name: "MQTT Text", namespace: "ukusa", author: "Kevin Hawkins")
