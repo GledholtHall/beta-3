@@ -82,7 +82,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true else state.myHub=false
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="pre beta 3a"
+    version="beta 3"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -198,7 +198,7 @@ void mqttClientStatus(String message) {
         runIn (5,"reset")  
     }
     else {
-        log ("Broker: ${message}","KH")
+        log ("Broker: ${message}","INFO")
         mqttState=interfaces.mqtt.isConnected()
         if (mqttState) {
             log ("MQTT broker connected","INFO")
