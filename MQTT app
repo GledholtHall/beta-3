@@ -6727,18 +6727,18 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         // >> @jwilliams
 		if (matchDevice != null) {
 			setStatus = ""
-			ArmValues = "armed night, armed home, armed away"
+			ArmValues = "armed night,armed home,armed away"
 			if (ArmValues.contains(state.toLowerCase())) {
-				if (mqttKeypadMode == "No Keycode Needed") {
+				if (mqttKeypadMode == "No Keycode needed") {
 					setStatus = state
 				} else if ((mqttKeypadMode == "Keycode to Arm only" || mqttKeypadMode == "Keycode to Arm/Disarm") && mqttKeypadCode == payload[1]) {
 					setStatus = state
 				}
-			} else if (state == "disarm") {
+			} else if ((state == "disarm")|(state='silence')) {  // silence added to mute siren 
 				if (mqttKeypadMode == "Keycode to Arm/Disarm") {
-					if (mqttKeypadCode == payload[1]) setStatus = 'disarm'
+					if (mqttKeypadCode == payload[1]) setStatus = state
 				} else if (mqttKeypadMode != "No control of keypad") {
-					setStatus = 'disarm'
+					setStatus = state
 				}
 
 			}
@@ -6747,6 +6747,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 			else if (setStatus == 'armed home') matchDevice.armHome()
 			else if (setStatus == 'armed away') matchDevice.armAway()
 			else if (setStatus == 'disarm') matchDevice.disarm()
+            else if (setStatus == 'silence') matchDevice.off()           
 			// << @jwilliams             
 			else {
 				String code = matchDevice.currentLockCodes.toString()
