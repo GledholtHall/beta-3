@@ -2574,7 +2574,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre beta 3c","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -5296,7 +5296,7 @@ def checkTopicLink(devID) {
 }
 
 def lookupP (param,message,topic,json) {
-    //log (" [lookupP] I got called $param $message $topic $json" ,"LOG")
+    log (" [lookupP] I got called $param $message $topic $json" ,"DEBUG")
     LookupManual(param,message,topic,json)
     return
 }
@@ -5311,9 +5311,7 @@ def LookupManual (param,message,topic,json) {
     def contactDevice=false
     def temperatureDevice=false	
     value=param
-
     deviceID=topic
-    //if (data.json=="true") json=true else json=false
     if (json=="true") json=true else json=false   
     found=false
     if (json){
@@ -5322,25 +5320,21 @@ def LookupManual (param,message,topic,json) {
         for (e in jsonVal) {
             // TODO handle single level nested JSON but currently no more
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
-
             jValue="${e.value}"
             jKey="${e.key}"
-            //log ("${e.key} : ${e.value}","LOG")
-
-            //if (value.startsWith('[') && value.endsWith(']')) log ("This has a nested json payload ${value}","LOG")
+            log ("${e.key} : ${e.value}","LOG")
+            if (value.startsWith('[') && value.endsWith(']')) log ("This has a nested json payload ${value}","DEBUG")
             jsonTopic=deviceID+"{${e.key}:}"
             list=checkTopicLink (jsonTopic)
             if (list.size>0) {
-               found=true
-               
-               //log ("FOUND JSON [$list.size]  $list $jsonTopic","LOG")
+               found=true               
+               log ("FOUND JSON [$list.size]  $list $jsonTopic","DEBUG")
                 // if (jsonTopic.endsWith ('}}')) log ("This is a nested JSON topic " + jsonTopic , "KH")
                list.each { DNI -> 
                    // TODO if nested need to call with nested json keys
                    if (value.startsWith('[') && value.endsWith(']')) log("TODO: Nested JSON $value","KH")
                    LookupAction(DNI,jKey,jValue,json,deviceID)
                }
-
             }
         }
     }
@@ -5373,12 +5367,12 @@ def LookupAction(LookupID,jKey,jValue,json,deviceID) {
                   if ((val != null) && (val != "") && (val != " ")) {
                     if (key.endsWith ("_Topic")||(key.endsWith ("_Cmd"))) {  // Do we want to map command topics ??  //TODO I think I need a value comparison to data.topic
                       attr = key - "_Topic"
-                      attr = attr - "_Cmd"  
+                      attr = attr - "_Cmd" 
                       if (json==true) {
-                          if (attr.contains(':==')) log.error "We have a test $attr"
-                          if (attr.toLowerCase().contains(jKey)){ 
-                          //log ("Matched $attr [$value] value $jKey [$jValue]","LOG")
-                          updateDeviceAttribute(device,attr,jValue) 
+                          if (val.contains(':==')) log.error "We have a test $attr"
+                          if (val.toLowerCase().contains(jKey)){ 
+                              log ("Matched $attr [$val] value $jKey [$jValue]","DEBUG")
+                              updateDeviceAttribute(device,attr,jValue) 
                           }
                       }
                       else dev2match=deviceID
@@ -6517,7 +6511,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
     matchDevice = findDeviceByName(matchName)
     log("Device Matched - " + matchDevice?.displayName + " - for command $cmd", "DEBUG")
     if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
-        log("Was here in commandP", "WARN")
 		if (matchDevice != null) {
 			//log("Here in commandP $cmd", "WARN")
             //proceed = dAttIsEnabled(it, cmd)
@@ -6536,7 +6529,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 		}
     } else if (cmd == "dim") {
         openHAB = false
-        log("Incoming dim /set $state", "WARN")
+        //log("Incoming dim /set $state", "WARN")
         val = "${state}"
         if (openHAB) intLevel = (Float.parseFloat(val) * 100).toInteger()
         else intLevel = state.toInteger()
@@ -6547,7 +6540,20 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                     dMatch = true
             }
 		}
-    } else if (cmd == "color") {
+    } else if (cmd == 'ramp') {
+        log("Incoming ramp /set $state", "WARN")
+        val = "${state}"
+        intLevel = state.toInteger()  // ToDo range check
+        if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
+        {
+			if (matchDevice != null) {
+                    //matchDevice.setLevel(intLevel, 1)
+                matchDevice.updateDataValue("[MQTT]_ramp", state)
+                    dMatch = true
+            }
+		}
+
+        } else if (cmd == "color") {
 		if (matchDevice != null) {
 			if (state[0] == '#') {
 				try {
@@ -6734,7 +6740,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 				} else if ((mqttKeypadMode == "Keycode to Arm only" || mqttKeypadMode == "Keycode to Arm/Disarm") && mqttKeypadCode == payload[1]) {
 					setStatus = state
 				}
-			} else if ((state == "disarm")|(state='silence')|(state='siren')) {  // siren control
+			} else if ((state == 'disarm')||(state=='silence')||(state=='siren')) {  // siren control
 				if (mqttKeypadMode == "Keycode to Arm/Disarm") {
 					if (mqttKeypadCode == payload[1]) setStatus = state
 				} else if (mqttKeypadMode != "No control of keypad") {
