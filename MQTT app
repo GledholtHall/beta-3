@@ -1984,7 +1984,7 @@ def mqttStatus(evt) {
     else if (evt.value=='Connect') {   // else if (evt.value=='Status') 
         log ("MQTT has reconnected, restarting APP", "INFO")
         atomicState.MQTTconnected=true
-        if (!atomicState.startup) {
+        if (!atomicState.started) {
             //atomicState.abort=true  // should kill the existing app if it's within the initialisation method
            
             log("restart requested but there's maybe another instance still initializing","WARN")
@@ -2802,9 +2802,28 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			pDev = ''
 			pValTemp = ',"value_template":"{{ value }}"'
 			payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pLock+pUnlock+pLocked+pUnlocked+pIcon+pDev+pValTemp+pID+'}'
-        }
+    }
+    else if (type=="shade") {
+        sCoverTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'
+        sCover2Topic="homie/${atomicState.normHubName}/${normName}"+'/state'
+        sCover3Topic="homie/${atomicState.normHubName}/${normName}"+'/position'
+        // Need to add the 0-100 position attribute in here //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        pState = ',"state_topic":"'+ sCover2Topic + '"'
+        pCmd = ',"command_topic":"'+ sCover2Topic + '/set"'
+        pPos= ',"position_topic":"'+ sCover3Topic +'"'
+        pPosCmd= ',"set_position_topic":"'+ sCover3Topic + '/set"'
+        pCLOSE = ',"payload_close":"close"' //default for booleans in homie
+        pOPEN = ',"payload_open":"open"'
+        pSTOP = ', "payload_stop": null '
+        pUOM = ''
+        pIcon = '' // ',"icon":"mdi:garage"'
+        pDev = ''
+        pValTemp = ',"value_template":"{{ value }}"'
+        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pPos+pPosCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
+        type='cover'  //revert to cover
+    } 
     else if (type=="cover") {
-        sCoverTopic="homie/${atomicState.normHubName}/${normName}"+'/contact'
+        sCoverTopic="homie/${atomicState.normHubName}/${normName}"+'/window'
         sCover2Topic="homie/${atomicState.normHubName}/${normName}"+'/door'
         pState = ',"state_topic":"'+ sCover2Topic + '"'
         pCmd = ',"command_topic":"'+ sCoverTopic + '/set"'
@@ -2816,7 +2835,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pDev = ''
         pValTemp = ',"value_template":"{{ value }}"'
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
-    }   
+    }
     else if (type=="alarm_control_panel") {
             sAlarmTopic="homie/${atomicState.normHubName}/${normalize(name)}/securitymode"  // the suffix is not used here
 			pState= ',"state_topic":"' + sAlarmTopic+'"'
@@ -4105,7 +4124,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
         log ("lastDev is $atomicState.lastDev        $name [$state]","TRACE")
-        if (state=='closed') state='close'  // treat them the same
+        if (state=='close') state='closed'  // treat them the same
         if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
         else {
             dType = device.getTypeName()
@@ -4205,7 +4224,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 				category='state'
                 settable="false"
                 dType='shade'
-                HAtype="cover"  // TODO has 4 values inc closing opening
+                HAtype="shade"  // TODO has 4 values inc closing opening
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,opening,partially open,closed,closing]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
@@ -5353,7 +5372,7 @@ def LookupManual (param,message,topic,json) {
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
             jValue="${e.value}"
             jKey="${e.key}"
-            log ("${e.key} : ${e.value}","LOG")
+            log ("${e.key} : ${e.value}","TRACE")
             if (value.startsWith('[') && value.endsWith(']')) log ("This has a nested json payload ${value}","DEBUG")
             jsonTopic=deviceID+"{${e.key}:}"
             list=checkTopicLink (jsonTopic)
@@ -6846,7 +6865,12 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
             matchDevice.setText(state)
         }
     
-    } else if (cmd == "prefix") {
+    } else if (cmd == "position") {
+        if (matchDevice != null) {
+            matchDevice.setPosition(state)
+        }
+    
+    }  else if (cmd == "prefix") {
         if (matchDevice != null) {
             matchDevice.setPrefix(state)
         }
