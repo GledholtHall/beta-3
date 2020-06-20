@@ -1,4 +1,4 @@
-// beta 3c
+// beta 3d
 metadata 
 {
 
@@ -127,9 +127,9 @@ def setBattery(level)
 {
    // if ((level>=0)&&(level<=100)){
         sendEvent(name: "battery", value:level,isStateChange: true)
-        setSuffix(" %")
-        setPrefix (" ")
-        forceValue(level.toString())
+        //setSuffix(" %")
+        //setPrefix (" ")
+        //forceText(level.toString())
    // }
 }
 
