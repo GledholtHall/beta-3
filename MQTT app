@@ -3445,7 +3445,7 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
                 if (cMQTT=="enabled") {
                     cTopic=device.getDataValue("level_Cmd")
                     (cTopic,b,state)=jsonSplit(cTopic,evt.value)
-                    if(cTopic!=null) {
+                    if((cTopic!=null) && (cTopic.length()!=0)) {
                         log ("(ccc) Sending command to MQTT $cTopic","INFO")
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
@@ -3482,12 +3482,24 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
 		    mqtt.publishMsg (sTopic+'/$name',"${name}",1,true)  
 		    mqtt.publishMsg (sTopic+'/$type',"light",1,true,atomicState.suppress)
             if (device!=null) mqtt.publishMsg (sTopic+'/-device-driver',device.typeName,1,true,atomicState.suppress)
-		    mqtt.publishMsg (sTopic+'/dim/$settable',"true",1,true,atomicState.suppress)  
+		    mqtt.publishMsg (sTopic+'/dim/$settable',"true",1,true,atomicState.suppress)
+
+            
 		    mqtt.publishMsg (sTopic+'/dim/$name',"${name}",1,true,atomicState.suppress) 
 		    mqtt.publishMsg (sTopic+'/dim/$datatype',"integer",1,true,atomicState.suppress)
 		    mqtt.publishMsg (sTopic+'/dim/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)
 		    if (openHAB) mqtt.publishMsg (sTopic+'/dim/$format',"0:1",1,true,atomicState.suppress)
             else mqtt.publishMsg (sTopic+'/dim/$format',"0:100",1,true,atomicState.suppress)
+            sRamp=device.getDataValue("[MQTT]_ramp")
+            if ((sRamp!=null) && (sRamp!='') && (sRamp!=' ')) mqtt.publishMsg (sTopic+'/ramp',sRamp,1,true)
+                                  
+            
+            mqtt.publishMsg (sTopic+'/ramp/$name',"${name}",1,true,atomicState.suppress)
+            mqtt.publishMsg (sTopic+'/ramp/$datatype',"string",1,true,atomicState.suppress)
+            mqtt.publishMsg (sTopic+'/ramp/datatype',"json",1,true,atomicState.suppress)
+            mqtt.publishMsg (sTopic+'/ramp/format','{"level": xx,"ramp": xx}',1,true,atomicState.suppress)
+		    mqtt.publishMsg (sTopic+'/ramp/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)
+            mqtt.publishMsg (sTopic+'/ramp/$settable',"true",1,true,atomicState.suppress)
 		    //===================================================================
         }
 	}
@@ -4154,7 +4166,6 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                     else if (xType=='door') {
                         cTopic=device.getDataValue("door_Cmd")
                         if (cTopic=='' || cTopic==' ' || cTopic==null) return
-                        //log.error "CTopic is #$cTopic#"
                         maps=device.getDataValue("door_MAP")
                         mapList = stringToList(maps)
                         (cTopic,b,state)=jsonSplit(cTopic,evt.value)
@@ -5664,7 +5675,7 @@ def sensorEvent(name,b,type,bool) {
 }
     
 def sensorAction(child,devType,val,attr=null) {
-    log ("SensorAction check attribute received was intended $attr [$val]", "LOG")
+    log ("SensorAction check attribute received was intended $attr [$val]", "DEBUG")
     maps=child.getDataValue("$attr" + "_MAP")
     if (maps != null) {
         log ("Child $child $val [$attr] has mapping of $maps" ,"KH")
@@ -6479,7 +6490,7 @@ def findDeviceByName(name) {
 }
 
 
-def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+def commandP(name, state, payload, cmd, topic, json) { // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
     // TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
     //def data = parseJson(evt.data)
     log("MQTT set command received for " + name + " " + cmd + " " + state + " " + topic + " " + payload, "DEBUG")
@@ -6597,6 +6608,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
 
     matchDevice = findDeviceByName(matchName)
     log("Device Matched - " + matchDevice?.displayName + " - for command $cmd", "DEBUG")
+  if (json==false) {
     if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
 		if (matchDevice != null) {
 			//log("Here in commandP $cmd", "WARN")
@@ -6627,20 +6639,7 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                     dMatch = true
             }
 		}
-    } else if (cmd == 'ramp') {
-        log("Incoming ramp /set $state", "WARN")
-        val = "${state}"
-        intLevel = state.toInteger()  // ToDo range check
-        if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
-        {
-			if (matchDevice != null) {
-                    //matchDevice.setLevel(intLevel, 1)
-                matchDevice.updateDataValue("[MQTT]_ramp", state)
-                    dMatch = true
-            }
-		}
-
-        } else if (cmd == "color") {
+    } else if (cmd == "color") {
 		if (matchDevice != null) {
 			if (state[0] == '#') {
 				try {
@@ -6912,6 +6911,23 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
     
     }  else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
+  }
+  else {    // json payload
+       if (cmd == 'ramp') {
+           def data = parseJson(payload)
+           ramp = data.ramp.toInteger()
+           intLevel = data.level.toInteger()  // ToDo range check
+           if ((0 <= intLevel)) { //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
+		 	  if (matchDevice != null) {  
+                matchDevice.setLevel(intLevel,data.ramp)
+                mqtt.publishMsg("homie/${atomicState.normHubName}/${normalize(matchName)}/ramp",ramp.toString(), 1)
+                dMatch = true
+                matchDevice.updateDataValue("[MQTT]_ramp", ramp.toString())
+            }
+		}
+
+     }   
+  }
 }
 
 
