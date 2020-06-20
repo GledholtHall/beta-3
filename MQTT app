@@ -25,7 +25,6 @@
 */
 
 /* #########################################################################################################
-
   This application is provided free of charge .. enjoy. 
 
   Should you wish you can help keep me awake longer via this link
@@ -6490,7 +6489,7 @@ def findDeviceByName(name) {
 }
 
 
-def commandP(name, state, payload, cmd, topic, json) { // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
+def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' command from homie for a Hubitat or manual device via Hubitat basic 
     // TODO This has value and data transposed in the two versions for discovered and adhoc .. tidy up
     //def data = parseJson(evt.data)
     log("MQTT set command received for " + name + " " + cmd + " " + state + " " + topic + " " + payload, "DEBUG")
@@ -6914,7 +6913,7 @@ def commandP(name, state, payload, cmd, topic, json) { // 'set' command from hom
   }
   else {    // json payload
        if (cmd == 'ramp') {
-           def data = parseJson(payload)
+           def data = parseJson(fullPayload)
            ramp = data.ramp.toInteger()
            intLevel = data.level.toInteger()  // ToDo range check
            if ((0 <= intLevel)) { //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
