@@ -351,10 +351,11 @@ def parse(String description) {
 
 	def topic=topicFull.split('/')
 	def topicCount=topic.size()
-	def payload=interfaces.mqtt.parseMessage(description).payload.split(',')
+    def payloadFull=interfaces.mqtt.parseMessage(description).payload
+	def payload=payloadFull.split(',')
     //log (topicFull + "   " + payload, "INFO")
-
-    if (payload[0].startsWith ('{')) json="true" else json="false"
+    //
+    if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
     if (topicFull.startsWith('homie/'+state.normHubName+'/$implementation/heartbeat')) {
         //log ("Rx: heartbeat [${payload[0]}]   $device.currentWaiting","DEBUG")
         if (device.currentWaiting != "none"){
@@ -646,7 +647,7 @@ def parse(String description) {
             sequence=state.seq2.toString()
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
-                parent.commandP(topic[2],payload[0],payload,topic[3],interfaces.mqtt.parseMessage(description))
+                parent.commandP(topic[2],payload[0],payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
@@ -654,7 +655,7 @@ def parse(String description) {
         }      
         else if (topicCount==5) { 
 			if (topic[4]=="set") {
-                parent.commandP(topic[2],payload[0],payload,topic[3],interfaces.mqtt.parseMessage(description))
+                parent.commandP(topic[2],payload[0],payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload,seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
@@ -858,7 +859,7 @@ def parse(String description) {
         top=interfaces.mqtt.parseMessage(description).topic
 		if (!top.startsWith("SHAC/")) log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
         log ("ad hoc MQTT parse  $top       ${payload[0]}", "TRACE")
-        parent.lookupP(payload[0],interfaces.mqtt.parseMessage(description).payload,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+        parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
        // if (json=="true") sendEvent (name: "Lookup", value: interfaces.mqtt.parseMessage(description).payload, data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	   // else sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	}
