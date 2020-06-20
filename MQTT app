@@ -447,7 +447,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                     list=["$vDev.deviceNetworkId"]
                                     temp["$myVal"] = list
                                 }
-//                                log ("[$i] UPDATED on add to $myVal","KH")  //   ${settings[var]}","KH")
+                                log ("[$i] UPDATED on add to $myVal","KH")  //   ${settings[var]}","KH")
                                 jas=myVal.indexOf("{")
                                 if ((jas>0) && (myVal.endsWith(':}'))){  //strip json
                                             //log ("Strip JSON value $defOne for subscribe" , "KH")
@@ -1707,6 +1707,7 @@ def whatProperty(attr) {
             break
         case "coolingSetpoint":
             property="cooling-setpoint"
+            break
         case "thermostatMode":
             property="mode"
             break
@@ -3004,6 +3005,10 @@ def subscribeVirtuals() {
                 if ((origin == "user")||(origin == "Home Assistant")||(origin == "homie")) {
                     myData=dev.getData()
                     if (myData != null) myData.each { dat ->
+                        if (dat.value==''||dat.value==' ') {
+                            //empty data values
+                        }
+                        else{
                         if (dat.key.endsWith("_Topic")) {
                             jas=dat.value.indexOf("{")
                             topic=dat.value
@@ -3032,6 +3037,7 @@ def subscribeVirtuals() {
                                 temp["$topic"] = list
                             }                            
                         }
+                     }
                    }
                 } 
             }
@@ -3745,6 +3751,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 				//mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
 				if ((tempUnits=="Fahrenheit °F")||(tempUnits=="Fahrenheit x.x°F")) UOM="°F" else UOM="°C"
 				mqtt.publishMsg (sTopic+'/'+category+'/$format','0:200',1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+category+'/$settable',"true",1,true,atomicState.suppress)
 				mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true,atomicState.suppress)
               }
 			}
@@ -5408,6 +5415,7 @@ def LookupManual (param,message,topic,json) {
 }
 
 def LookupAction(LookupID,jKey,jValue,json,deviceID) {
+    log ("LookupAction $jKey [$jValue] $json  $deviceID","TRACE")
         if (LookupID != null) {	
         device=getChildDevice(LookupID.toString())
         if (device) {
@@ -5418,15 +5426,16 @@ def LookupAction(LookupID,jKey,jValue,json,deviceID) {
                     if (key.endsWith ("_Topic")||(key.endsWith ("_Cmd"))) {  // Do we want to map command topics ??  //TODO I think I need a value comparison to data.topic
                       attr = key - "_Topic"
                       attr = attr - "_Cmd" 
+                      log ("Key is $key and value is $val","TRACE")
                       if (json==true) {
-                          if (val.contains(':==')) log.error "We have a test $attr"
-                          if (val.toLowerCase().contains(jKey)){ 
+                          if (val.contains(':==')) log ("We have a test $attr","LOG")
+                              if (val.contains(deviceID+'{'+jKey+':}')){ 
                               log ("Matched $attr [$val] value $jKey [$jValue]","DEBUG")
                               updateDeviceAttribute(device,attr,jValue) 
                           }
                       }
                       else dev2match=deviceID
-                          if (val == dev2match) {   
+                          if (val == dev2match) { 
                               if (key.endsWith ("_Topic")) {
                               updateDeviceAttribute(device,attr,jValue)
                               }
@@ -5510,8 +5519,7 @@ def deviceAction (child,devType,value,attr=null)  {
         }
         else if (attr=='variable' && child.hasCommand('setVariable')) child.setVariable(value)
         else if (attr=="text"){
-            if (child.hasCommand('updateText')) child.updateText (value)  // my MQTT Text driver
-            else if (child.hasCommand('setText')) child.setText (value)
+            if (child.hasCommand('setText')) child.setText (value)  // my MQTT Text driver
         }
         else if (attr=="lock"){
            log ("Lock is " + value + "===" + mapList[0]+"===" +mapList[2], "INFO")
@@ -5641,7 +5649,7 @@ def HASensorEventP(name,payload,type,bool) {
 }
 
 def sensorEvent(name,b,type,bool) {   
-    //log ("Received a sensor event from ${evt.value} level ${data.status}", "DEBUG")
+    log ("Received a sensor event from ${evt.value} level ${data.status}", "KH")
     log ("Received a sensor event from $a level $b}", "DEBUG")
     child=getChildDevice("MQTT:homie_"+name)
 	if (child==null) {
@@ -5656,7 +5664,7 @@ def sensorEvent(name,b,type,bool) {
 }
     
 def sensorAction(child,devType,val,attr=null) {
-    //log ("SensorAction check attribute received was intended $attr [$val]", "LOG")
+    log ("SensorAction check attribute received was intended $attr [$val]", "LOG")
     maps=child.getDataValue("$attr" + "_MAP")
     if (maps != null) {
         log ("Child $child $val [$attr] has mapping of $maps" ,"KH")
@@ -5711,14 +5719,39 @@ def sensorAction(child,devType,val,attr=null) {
         else if (mapList[1] == val) child.open()
     }
     else if (attr=="battery") { 
-        log ("$child appears to be a battery device - using a global variable to store the battery level [$val]","LOG")
         if (child.typeName=="MQTT Text") child.setBattery(val)  // only my MQTT Text device supports this
-        else if (child.typeName=="RM Connector Variable") child.setVariable (val)
+        else if (child.typeName=="RM Connector Variable"){
+             log ("$child appears to be a battery device - using a global variable to store the battery level [$val]","LOG")
+            child.setVariable (val)
+        }
     }
-   else if (attr=="pressure") { 
-        log ("$child appears to be a pressure device - using a global variable to store the pressure [$val]","LOG")
-        if (child.typeName=="MQTT Text") child.updateText(val)  // only my MQTT Text device supports this
-        else if (child.typeName=="RM Connector Variable") child.setVariable (val)
+   else if (attr=="power") { 
+       
+       if (child.hasCommand ("setPower")) child.setPower(val)
+       else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
+       else if (child.typeName=="RM Connector Variable")
+           {
+           log ("$child appears to be a power device - using a global variable to store the power [$val]","LOG")
+           child.setVariable (val)
+       }
+    }
+       else if (attr=="energy") { 
+
+        if (child.hasCommand ("setEnergy")) child.setEnergy(val)
+        else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
+        else if (child.typeName=="RM Connector Variable") {
+           log ("$child appears to be an energy device - using a global variable to store the energy [$val]","LOG")
+           child.setVariable (val)
+        }
+    }
+    else if (attr=="pressure") { 
+
+        if (child.hasCommand ("setPressure")) child.setPressure(val)
+        else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
+        else if (child.typeName=="RM Connector Variable"){
+            log ("$child appears to be a pressure device - using a global variable to store the pressure [$val]","LOG")
+            child.setVariable (val)
+        }
     }
    else if (attr=="acceleration"){
         if (mapList[0] == val){
@@ -6736,7 +6769,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
                 OpenValues = "open"
                 if (CloseValues.contains(state.toLowerCase())) {
                     //if (devType == "system")
-                    log.error "here"
                     matchDevice.close() // think can only be a system type here
                     //else device.toON()
                 } else if (OpenValues.contains(state.toLowerCase())) {
@@ -6856,7 +6888,6 @@ def commandP(name, state, payload, cmd, topic) { // 'set' command from homie for
         }
     } else if (cmd == "measure-temperature") {
         if (matchDevice != null) {
-            log.error matchDevice.typeName
             if (matchDevice.typeName == "Virtual Thermostat")  matchDevice.setTemperature (state)
     
         }
