@@ -647,7 +647,7 @@ def parse(String description) {
             sequence=state.seq2.toString()
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
-                parent.commandP(topic[2],payload[0],payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
+                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload, seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
@@ -655,7 +655,7 @@ def parse(String description) {
         }      
         else if (topicCount==5) { 
 			if (topic[4]=="set") {
-                parent.commandP(topic[2],payload[0],payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
+                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
 				//def evt12 = createEvent(name: "Command", value: topic[2], data: [state: payload[0], payload: payload,seq: sequence, cmd: topic[3],topic: interfaces.mqtt.parseMessage(description)], isStateChange: true)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return //evt12					
