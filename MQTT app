@@ -6607,8 +6607,8 @@ def commandP(name, state, payload, cmd, topic, json) { // 'set' command from hom
     }
 
     matchDevice = findDeviceByName(matchName)
-    log("Device Matched - " + matchDevice?.displayName + " - for command $cmd", "DEBUG")
-  if (json==false) {
+    log("Device Matched - " + matchDevice?.displayName + " - for command $cmd  $json", "DEBUG")
+  if (json=='false') {
     if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
 		if (matchDevice != null) {
 			//log("Here in commandP $cmd", "WARN")
