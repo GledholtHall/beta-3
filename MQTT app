@@ -106,7 +106,7 @@ preferences {  // can't use atomicState vars in this section
                  page: "vMQTT")
             }
                 
-			section ("<b>Publish these device capabilities to MQTT</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
+			section ("<b>Publish these HE devices to MQTT</b>",hideWhenEmpty: true, hideable: true, hidden: true) {
                 input "modes", "bool", title: "Mode changes", required: false
                 input "hsm", "bool", title: "Hubitat Security Monitor", required: false
                 input "everything", "capability.*",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Everything (all capabilities/attributes a selected device supports)</b>", submitOnChange: false
@@ -587,8 +587,8 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                    if ("${attrList[i]}" != "level") {  // Need to expand this to other numerics and non binaries
                         if (attrList[i].dataType =="ENUM") { 
                         //input(name: varJSON, type: "text", defaultValue: '', title: "JSON {attribute:} name (optional)" , required: false, submitOnChange: false, hideWhenEmpty: true, width: 4)
-                        //input(name: varAtt, type: "text", defaultValue: defAtt, title: "&nbsp &nbsp &nbsp &nbsp MQTT payload values for <b>$atts</b> for the <b>${atomicState.attList[i]}</b> attribute" , required: false, submitOnChange: true)// , width: 6)
-                       input(name: varAtt, type: "text", defaultValue: defAtt, title: "&nbsp &nbsp &nbsp &nbsp MQTT payload values for <b>${atts.replace(', ',',')}</b> for the <b>${attrList[i]}</b> attribute" , required: false, submitOnChange: true)// , width: 6)
+                        //input(name: varAtt, type: "text", defaultValue: defAtt, title: "&nbsp &nbsp &nbsp &nbsp MQTT payload map values for <b>$atts</b> for the <b>${atomicState.attList[i]}</b> attribute <br> &nbsp &nbsp &nbsp &nbsp [status] or [status][command]" , required: false, submitOnChange: true)// , width: 6)
+                       input(name: varAtt, type: "text", defaultValue: defAtt, title: "<b>${attrList[i]}</b> attribute MQTT payload map values to <b>${atts.replace(', ',',')}</b> for separate [status][command] or [shared]" , required: false, submitOnChange: true)// , width: 6)
 
                         }
                         if (!newDev)  {
@@ -2582,7 +2582,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre beta 3d 3","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3244,13 +3244,19 @@ def subscribeOneOffTopics(topic) {
 	mqtt.subscribeTopic(topic)
 }
 
-def stringToList(maps) {
+def stringToList(maps,what='cmd') {
     //maps=device.getDataValue("switch_MAP")
     if (maps != null) {
-    //log ("Child $child $val [$attr] has mapping of $maps" ,"KH")
-    maps=maps.substring(1, maps.length() - 1)
-    mapList = maps.split(',')
-    return (mapList)
+        if (what=='cmd') {  // want the cmd map
+            cmdStart=maps.indexOf('][') // has command mappings
+            if (cmdStart>1){
+                cmdMaps=maps.substring(cmdStart+1, maps.length())
+                maps=cmdMaps
+            }
+        }
+        maps=maps.substring(1, maps.length()-1)
+        mapList = maps.split(',')
+        return (mapList)
     }
 }
 
@@ -5479,7 +5485,9 @@ def deviceAction (child,devType,value,attr=null)  {
     if ((maps != null)&&(maps!=' ')&&(maps!='')) {
         //isEnum=true
         //log ("Child $child $value [$attr] has mapping of $maps" ,"KH")
-        maps=maps.substring(1, maps.length() - 1)
+        endPos=maps.indexOf(']')
+        //maps=maps.substring(1, maps.length() - 1)
+        maps=maps.substring(1, endPos)
         mapList = maps.split(',')
         if (mapList==null) {
             log ("MapList was null for $child  $attr","INFO")
@@ -5677,8 +5685,10 @@ def sensorAction(child,devType,val,attr=null) {
     log ("SensorAction check attribute received was intended $attr [$val]", "DEBUG")
     maps=child.getDataValue("$attr" + "_MAP")
     if (maps != null) {
-        log ("Child $child $val [$attr] has mapping of $maps" ,"KH")
-        maps=maps.substring(1, maps.length() - 1)
+        //log ("Child $child $val [$attr] has mapping of $maps" ,"KH")
+        endPos=maps.indexOf(']')
+        //maps=maps.substring(1, maps.length() - 1)
+        maps=maps.substring(1, endPos)
         mapList = maps.split(',')
         //assert mapList instanceof List
     }
