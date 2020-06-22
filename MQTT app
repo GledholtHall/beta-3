@@ -1108,7 +1108,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3d pre 3',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3b',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -1196,13 +1196,27 @@ def initialize() {
 }
 
 def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT) come in here
+    log.error "mqttChange"
     if (evt.name=='switch') {
         mqtt = getChildDevice("MQTT: Child device driver")
         topic = evt.device.getDataValue("switch_Cmd")
-
+        jas=topic.indexOf("{")  //JSON
         //khcheck
-          jas=topic.indexOf("{")  //JSON
-              if ((jas>0) && (topic.endsWith(':}'))){  //strip json
+        //TODO
+        
+/*       
+        jasEnd=topic.length()
+        if (topic[jasEnd] == '}') log  ("Json appears true ","KH")
+        if (!topic[jasEnd-1] == ':') log  ("Json append appears true ","KH")
+        jasAppend=topic.indexOf("}{")
+        if (jasAppend > 1) log  ("Json append has data ","KH")
+        jasEnd=topic.indexOf(":}")
+        jasLen=topic.length()
+*/   
+        // {value:}{"extra": "stuff", "goes": "here", "level": 55}
+        // {value:,"extra": "stuff", "goes": "here", "level": 55}
+        
+          if ((jas>0) && (topic.endsWith(':}'))){  //strip json
                  //log ("Strip JSON value $defOne for publish" , "KH")
                   json='{"' + topic.substring(jas+1,topic.length()-2) + '":"' + evt.value +'"}'
                   topic=topic.substring(0, jas)   
@@ -2582,7 +2596,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre beta 3d 3","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre4 beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3261,19 +3275,26 @@ def stringToList(maps,what='cmd') {
 }
 
 
-def jsonSplit (source,value=null){  // source is the json string and value is any value you want including in returned values
-               if(source!=null) {                        
-                    jas=source.indexOf("{")  //JSON
-                    if ((jas>0) && (source.endsWith(':}'))){  //strip json
-                       if (value!=null) embed='{"' + source.substring(jas+1,source.length()-2) + '":"' + value +'"}'
-                       else embed=''
-                       base=source.substring(0, jas)
-                       json=source.substring(jas+1,source.length()-2 ) // ...NB this will be json not {json}
-                       return [base,json,embed]
-                     }
-                   else return [source,'',value]
-               }
-    else return ['','','']
+def jsonSplit (source,value=null){  // source is the json string and value is the value you want including in returned payload
+        if(source!=null) {
+            jasStart=source.indexOf("{") 
+            if ((jasStart>1) && (source.endsWith('}'))) {  //valid JSON
+                jasExtra=source.indexOf("}{")
+                if (jasExtra > 1) jasAppend=','+source.substring(jasExtra+2) else jasAppend=','
+                jasSub=source.indexOf(":}") 
+                if (jasSub>1) {
+                    source=source.substring(0, jasSub+2)               
+                    if (source.endsWith(':}')){  //strip json
+                        if (value!=null) embed='{"' + source.substring(jasStart+1,source.length()-2) + '":"' + value +'"'+ jasAppend
+                        else embed=''
+                        base=source.substring(0, jasStart)
+                        json=source.substring(1,source.length()-2 ) // ...NB this will be json not {json}
+                        return [base,json,embed]
+                    }
+                }
+            }
+       }
+       else return ['','','']
 }
 
 //#######################################################################################################################################
@@ -5733,9 +5754,6 @@ def sensorAction(child,devType,val,attr=null) {
     }
     else if (attr=="contact"){
         if (mapList[0] == val) child.close()
-        //log.error mapList[0]
-        //log.error val
-        //if (mapList[0] == 'close' || val =='closed') child.close()
         else if (mapList[1] == val) child.open()
     }
     else if (attr=="battery") { 
