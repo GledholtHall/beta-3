@@ -126,6 +126,7 @@ preferences {  // can't use atomicState vars in this section
                 input "colourMode", "capability.colorMode",hideWhenEmpty: true,multiple: true, required: false, title: "<b>Colour Mode devices</b>", submitOnChange: false
                 input "contactsensors", "capability.contactSensor",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Contact sensors</b>", submitOnChange: false
                 input "dimmers", "capability.switchLevel",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Dimmers</b>", submitOnChange: false
+                input "fans", "capability.fanControl",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Fans</b>", submitOnChange: false
 				input "garagedoors", "capability.garageDoorControl",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Garage Door</b>", submitOnChange: false  
                 input "humiditysensors", "capability.relativeHumidityMeasurement",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Humidity sensors</b>", submitOnChange: false
 				input "illuminancesensors", "capability.illuminanceMeasurement",hideWhenEmpty: false, multiple: true, required: false, title: "<b>Illuminance sensors</b>", submitOnChange: false
@@ -1095,8 +1096,7 @@ def initialize() {
     }
 	    mqtt.unsubscribeTopic("homie/${state.normHubName}/" +'$fw/name')
         mqtt.unsubscribeTopic("homie/${state.normHubName}/" + '$fw/client')
-        mqtt.unsubscribeTopic("homie/${state.normHubName}/" +'$fw/version')																	
-											
+        mqtt.unsubscribeTopic("homie/${state.normHubName}/" +'$fw/version')																										
    
 	//if (settings?.homiePublish)
 	//{
@@ -1296,6 +1296,9 @@ def buildMQTTLookup() {    // allows lookup of the HE device using normalised na
        total+=count
     count=buildMaps((settings?.garagedoors),"garage doors",temp1,temp2)
        atomicState.MQTTgarageDevices=count
+       total+=count
+   count=buildMaps((settings?.fans),"fans",temp1,temp2)
+       atomicState.MQTTfanDevices=count
        total+=count
    count=buildMaps((settings?.mqtttext),"mqtt text",temp1,temp2)
        atomicState.MQTTtext=count
@@ -1555,6 +1558,7 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
         count = registerSpecificCapability (bulbs,count,'Bulb','otherDevices')
         count = registerSpecificCapability (chimes,count,'Chime','otherDevices')
         count = registerSpecificCapability (garagedoors,count,'GarageDoorControl','otherDevices')
+        count = registerSpecificCapability (fans,count,'FanControl','otherDevices')
         count = registerSpecificCapability (keypads,count,'SecurityKeypad','keypadDevices')
         count = registerSpecificCapability (outlets,count,'Outlet','otherDevices')
         count = registerSpecificCapability (relayswitches,count,'RelaySwitch','otherDevices')
@@ -1562,6 +1566,8 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
         count = registerSpecificCapability (speechsynthesis,count,'SpeechSynthesis','audioDevices')
         count = registerSpecificCapability (valves,count,'Valve','OtherDevices')
         count = registerSpecificCapability (windowshades,count,'WindowShade','otherDevices')
+        //count = registerSpecificCapability (windowshades,count,'Level','otherDevices')
+        count = registerSpecificCapability (windowshades,count,'Switch','otherDevices')
         count = registerSpecificCapability (dimmers,count,'SwitchLevel','dimmed')
         count = registerSpecificCapability (locks,count,'Lock','locked')
         count = registerSpecificCapability (switches,count,'Switch','switched')
@@ -1795,12 +1801,15 @@ def whatProperty(attr) {
         case "cover":
         case "door":
         case "position":
+        case "speed":
         case "valve":
         case "variable":
         case "lock":
-        case "windowShade":
             property=attr.toLowerCase()
-            break        
+            break
+        case "windowShade":
+            property='state'
+            break
         default:
             log ("Unknown property value $attr","WARN")
             //property=attr.toLowerCase()
@@ -1851,6 +1860,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
    case "Alarm":
    case "Bulb":
    case "Chime":
+   case "FanControl":
    case "GarageDoorControl":
    case "Outlet":   
    case "RelaySwitch":
@@ -2261,8 +2271,10 @@ def synchDevices() {
     devLoop (settings?.chimes,"chime","otherDevices")
     devLoop (settings?.garagedoors,"contact","otherDevices")
     devLoop (settings?.garagedoors,"door","otherDevices")
+    devLoop (settings?.fans,"speed","otherDevices")
     devLoop (settings?.windowshades,"switch","otherDevices")
     devLoop (settings?.windowshades,"position","otherDevices")
+    devLoop (settings?.windowshades,"level","otherDevices")
     devLoop (settings?.windowshades,"windowShade","otherDevices")
     devLoop (settings?.keypads,"lastCodeName","keypadDevices")
     devLoop (settings?.keypads,"securityKeypad","keypadDevices")
@@ -2582,14 +2594,16 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         return
     }
 	normName = normalize(name+nameSuffix) 
-	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","DEBUG")
+	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","KH")
     if (id==0) log ("The ID for device $name $type was 0","WARN")
 	if (atomicState.nameMap.containsValue(name)) log ("Found in nameMap" + name, "DEBUG") else log ("NOT Found in nameMap" + name, "DEBUG")
 		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'   //TODO tidy
         pAvail=',"availability_topic":"homie/' + "${atomicState.normHubName}" + '/$state"'
         pAvailPay=',"payload_available":"ready"'
         pNotAvailPay=',"payload_not_available":"init"'
+        if (name=="vFan") name="vFantastic"
 		pName = '"name":"'+name+nameSuffix+'"'
+        
 		pUID = ',"unique_id":"Hubitat-MQTT:_' + normName + '"'
 		pDevClass=''
 		payload=''
@@ -2603,7 +2617,61 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 		pOFF = ',"payload_off":"false"'
     
     
-    if (type=="climate") {
+    
+    if (type=="fan") {
+        pFanMode=''
+        pFanCmd=''
+        pFanModes=''
+        pMode=''
+        pModeCmd=''
+        pModes=''
+        pSetpointCmd=''
+        pHSetpointCmd=''
+        pCSetpointCmd=''
+        
+        //pDevClass = ',"device_class": "fan"'
+        pDevClass=''
+        sFanTopic="homie/${atomicState.normHubName}/${normName}/speed"
+        pCmd = ',"command_topic": "' + sFanTopic + '/set2"'
+        pStatus = ',"state_topic": "' + "homie/${atomicState.normHubName}/${normName}/onoff"+'"'
+        pSpeedMode = ',"speed_state_topic": "' + sFanTopic +'"'
+        pSpeedCmd = ',"speed_command_topic": "' + sFanTopic + '/set"'
+        //pSpeedModes = ',"speeds": "' + sFanTopic + '/$format"'
+        pSpeedModes = '' 
+        pSpeedModes=',"speeds": ["low","medium-low","medium","medium-high","high","auto","on","off"]'
+        pSpeedLow = ',"payload_low_speed": "low"'
+        pSpeedMed = ',"payload_medium_speed": "medium"'
+        pSpeedHigh = ',"payload_high_speed": "high"'
+      
+        //pMode = ',"mode_state_topic": "homie/development/v2thermostat/mode"'
+        //pModeCmd = ',"mode_command_topic": "homie/development/v2thermostat/mode/set"'
+        //pModes = ',"modes": "homie/development/v2thermostat/modes/$format"'
+        //pModes=',"modes": "[“auto”, “off”, “cool”, “heat”]"'
+        
+
+
+       // [“auto”, “off”, “cool”, “heat”, “dry”, “fan_only”]
+        
+        pState = ',"state_topic":"'+ sTopic + '"'
+        pState = ''
+        pON=''
+        pOFF=''
+        pUOM=''
+        //pON
+        //pOFF
+        //pIcon
+        //pDev
+        //pValTemp
+        //pID 
+
+        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pCmd+pStatus+pSpeedMode+pSpeedCmd+pSpeedModes+pSpeedLow+pSpeedMed+pSpeedHigh+'}'   
+    } 
+    
+    
+    
+    
+    
+    else if (type=="climate") {
         pFanMode=''
         pFanCmd=''
         pFanModes=''
@@ -3323,12 +3391,12 @@ def switched(evt, name=null, type=null, state=null, device=null) {
             {
                 cMQTT=device.getDataValue("mqtt")
                 if (cMQTT=="enabled") {
-                    cTopic=device.getDataValue("switch_Cmd")  
+                    cTopic=device.getDataValue("switch_Cmd")
                     if(cTopic!=null) { 
                         maps=device.getDataValue("switch_MAP")
                         mapList = stringToList(maps)
-                    }
-                        //  log ("States are " + mapList[0] + " and " + mapList[1],"LOG")
+   
+                        log ("States are " + mapList[0] + " and " + mapList[1],"LOG")
                         if (state=='on') {
                             if (mapList[0] != null) state = mapList[0]
                         }
@@ -3340,6 +3408,7 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
+                  }
                 }
             }
 	    } 
@@ -3397,7 +3466,8 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
                    if(cTopic!=null) { 
                         maps=device.getDataValue("switch_MAP")
                         mapList = stringToList(maps)
-                    }
+
+                    
                       //  log ("States are " + mapList[0] + " and " + mapList[1],"LOG")                                               
                         if (state=='on') {
                             if (mapList[0] != null) state = mapList[0]
@@ -3410,6 +3480,7 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
                 }
+              }
             }
 	    
 
@@ -3461,7 +3532,7 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
         name=evt.displayName
 		state=evt.value
 		xName=evt.name
-		log ("Device dimmed ${state}  ${name}", "DEBUG")
+		//log ("Device dimmed ${state}  ${name}", "LOG")
         if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
         else {
             dType = device.getTypeName()
@@ -3484,7 +3555,7 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
 		xName=name
 		log ("Device (synch) dimmed ${state}  ${name}", "DEBUG")
 	}
-	
+
 	if (settings?.homiePublish) {
     	normName = normalize(name) 
 		//================  Limited homie spec implemenation ================
@@ -3496,7 +3567,12 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
                 float smallDim = state.toInteger()/100
                 mqtt.publishMsg (sTopic+'/dim',smallDim.toString())
         }
-        else mqtt.publishMsg (sDimTopic,"${state}",1,true)
+        
+        else {
+            val="$state"
+            mqtt.publishMsg (sDimTopic,val,1,true)
+        }
+
 //END Kludge OH
        
         if (!atomicState.suppress) {
@@ -4169,7 +4245,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
         log ("lastDev is $atomicState.lastDev        $name [$state]","TRACE")
-        if (state=='close') state='closed'  // treat them the same
+        //if (state=='close') state='closed'  // treat them the same
         if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
         else {
             dType = device.getTypeName()
@@ -4256,7 +4332,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,closed,opening,closing]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
-            else if (xType=='position'){  //TODO
+            else if ((xType=='position')||(xType=='level')){  //TODO  some windowshades dont have a position attribute
 				category='position'
                 settable="true"
                 dType='shade'
@@ -4270,6 +4346,14 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 dType='shade'
                 HAtype="shade"  // TODO has 4 values inc closing opening
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,opening,partially open,closed,closing]',1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
+            }
+            else if (xType=='speed'){  //TODO
+				category='speed'
+                settable="true"
+                dType='fan'
+                HAtype="fan"  
+                mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
             else if (xType=='switch'){  //TODO
@@ -6500,8 +6584,8 @@ def sendPayload(topic,payload) {
 def findDeviceByName(name) {
     matchDevice = null
     settingsDevices = [settings?.everything, settings?.switches, settings?.dimmers, 
-        settings?.colour, settings?.colourT, settings?.locks, settings?.garagedoors, settings?.mqtttext,
-        settings?.windowshades, settings?.valves, settings?.thermostats, settings?.keypads, settings?.gVars,settings?.globVars]
+        settings?.colour, settings?.colourT, settings?.locks, settings?.garagedoors, settings?.fans, settings?.mqtttext,
+        settings?.windowshades, settings?.valves, settings?.thermostats, settings?.keypads, settings?.gVars ,settings?.globVars]
     settingsDevices.find{
         if (matchDevice != null) {
             return true
@@ -6908,6 +6992,11 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
 		if (matchDevice != null) {
 			matchDevice.speak(state, 30)
         }
+    } else if (cmd == "speed") {
+        if (matchDevice != null) {
+            matchDevice.setSpeed(state)
+        }
+    
     } else if (cmd == "music") {
 		if (matchDevice != null) {
 			log("Music Command not yet implemented " + matchDevice + " [" + state + "]", "WARN")
@@ -6924,7 +7013,8 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
     
     } else if (cmd == "position") {
         if (matchDevice != null) {
-            matchDevice.setPosition(state)
+            if (matchDevice.hasCommand('setPosition')) matchDevice.setPosition(state)
+            else matchDevice.setLevel(state)
         }
     
     }  else if (cmd == "prefix") {
