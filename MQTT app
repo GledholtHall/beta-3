@@ -5678,7 +5678,9 @@ def deviceAction (child,devType,value,attr=null)  {
     else if (attr=='battery'){
         child.setBattery(value)
     }
-
+    else if (attr=='speed'){
+        child.setSpeed(value)
+    }
     else if (attr=="contact"){
         child.sendEvent(name:"door", value:value)
         if ((mapList[0] == value )||(mapList[0]=='close' && value=='closed')) {
