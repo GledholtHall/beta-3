@@ -139,7 +139,7 @@ preferences {  // can't use atomicState vars in this section
                 input "outlets", "capability.outlet",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Outlets</b>", submitOnChange: false
                 input "powersensors", "capability.powerMeter",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Power sensors</b>", submitOnChange: false
 				input "presencesensors", "capability.presenceSensor",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Presence sensors</b>", submitOnChange: false
-                input "refresh", "capability.refresh",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Refresh (not yet functional)</b>", submitOnChange: false  //Casey
+                input "refresh", "capability.refresh",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Refresh</b>", submitOnChange: false  //Casey
                 input "relayswitches", "capability.relaySwitch",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Relay Switches</b>", submitOnChange: false
                 input "sensors", "capability.sensor",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Sensors</b>", submitOnChange: false  
                 input "shocksensors", "capability.shockSensor",hideWhenEmpty: true, title: "<b>Shock sensors</b>", multiple: true, required: false
@@ -226,7 +226,8 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                 if ((data2['mqtt']=="true")||(data2['mqtt']=="enabled")) {   // these are the MQTT enabled devices for this driver type
                 data2.each { key, value ->                  
                 if ((value != null) && (value != "") && (value != " ")) {
-                    if (key.endsWith ("_Topic")) {                        
+                    if (key.endsWith ("_Topic")) {                        abort is
+
                         localMap=atomicState.Mappings    
                         localMap.put (value, dev.deviceNetworkId)
                         atomicState.Mappings=localMap
@@ -951,6 +952,7 @@ def uninstalled() {
 
 def reStart(evt) {
     log ("===================== ReStart =====================", "INFO")
+    atomicState.restartPending=false
     unschedule()
     unsubscribe()
 	initialize()
@@ -1196,7 +1198,7 @@ def initialize() {
 }
 
 def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT) come in here
-    log.error "mqttChange"
+    //log.error "mqttChange"
     if (evt.name=='switch') {
         mqtt = getChildDevice("MQTT: Child device driver")
         topic = evt.device.getDataValue("switch_Cmd")
@@ -1375,7 +1377,7 @@ def buildMaps (devices, type, temp1, temp2) {
 }    
 
 def mqttSubscribes() {  //events from MQTT driver    
-    subscribe(mqtt,"MQTTStatus", mqttStatus)
+    //subscribe(mqtt,"MQTTStatus", mqttStatus)
     subscribe(mqtt,"HADiscoverStart",start_HADiscovery)
 	//subscribe(mqtt,"HASynch", synchDevices)
 	subscribe(mqtt,"OnOffDev", onoffCapability)
@@ -1998,14 +2000,16 @@ def sunTimes() {
             }    
 }
 
-def mqttStatus(evt) {
-    log("MQTT Status is ${evt.value}","INFO")
-    if (evt.value=='Online'){
+def mqttStatus(status) {
+    if (status=="Error") log("MQTT reports status of $status","ERROR")
+    else log("MQTT reports status of $status","INFO")
+    if (status=='Online'){
         log ("MQTT already connected", "INFO")
         atomicState.MQTTconnected=true
     }
         
-    else if (evt.value=='Connect') {   // else if (evt.value=='Status') 
+    else if (status=='Connect') { 
+        atomicState.delay=0
         log ("MQTT has reconnected, restarting APP", "INFO")
         atomicState.MQTTconnected=true
         if (!atomicState.started) {
@@ -2019,8 +2023,27 @@ def mqttStatus(evt) {
     }
     
     else {
-        log ("MQTT connection error " + evt.value, "ERROR")
+        if (atomicState.delay!=0)atomicState.delay+=10000
+        log ("Restarting MQTT app and reconnecting to MQTT in ${atomicState.delay/1000} seconds", "WARN")
+        pauseExecution(atomicState.delay)
         atomicState.MQTTconnected=false
+        atomicState.abort=true // This should cause any code running in initialize() to abort
+        runIn(200, "reStart") // will force a restart anyway in 2 minutes if app doesn't abort itself.
+        atomicState.restartPending=true
+        if (!atomicState.started) {
+            if (atomicState.abortable==true) atomicState.abort=true   // requests app to abort
+            
+            if (atomicState.abort) log ("Will now wait up to 2 minutes for abort ", "WARN")
+            count=-10
+            while (atomicState.abort) {
+            count+=10
+            log("App restart requested after MQTT disconnect but there's maybe another instance still initializing","WARN")
+            log.warn "Waiting ... [$count seconds]"
+            pauseExecution (10000)
+            }
+        }
+        log("Previous run was aborted succesfully","INFO")
+        runIn (1,"reStart")  //cancels timed restart
     }
     
     //  Not doing anything now as the driver will reconnect itself, or if it was commanded to disconnect the user will have to intervene and re-run this app.
@@ -2132,6 +2155,18 @@ def synchDevices() {
         count=0 
         everyThing.each {
             myName=it.displayName
+            
+                if (it.hasCommand ("refresh")) {
+                    normName=normalize(myName)
+            	    sTopic="homie/${atomicState.normHubName}/${normName}"
+                    addProperty(sTopic,'refresh',it)
+                    mqtt.publishMsg (sTopic+'/refresh','false',1,true)
+                    mqtt.publishMsg (sTopic+'/refresh/$datatype','boolean',1,true)
+                    mqtt.publishMsg (sTopic+'/refresh/$settable','true',1,true)
+                    mqtt.publishMsg (sTopic+'/refresh/$name',dev.displayName,1,true)
+                    mqtt.publishMsg (sTopic+'/refresh/$retained','true',1,true)
+                }
+            
             //log ("Everything type name is $it.typeName","LOG")
             if (it.typeName.contains("Sensor")||it.typeName.contains("Presence")) sensor=true else sensor=false 
                 if (sensor) {
@@ -2318,6 +2353,19 @@ def synchDevices() {
     devLoop (settings?.mqtttext,"text","otherDevices")
     devLoop (settings?.mqtttext,"prefix","otherDevices")
     devLoop (settings?.mqtttext,"suffix","otherDevices")
+    devLoop (settings?.refresh,"suffix","otherDevices")
+    
+    settings?.refresh.each { dev ->
+            if (dev.hasCommand ("refresh")) {
+                addProperty(sTopic,'refresh',dev)
+                mqtt.publishMsg (sTopic+'/refresh','false',1,true)
+                mqtt.publishMsg (sTopic+'/refresh/$datatype','boolean',1,true)
+                mqtt.publishMsg (sTopic+'/refresh/$settable','true',1,true)
+                mqtt.publishMsg (sTopic+'/refresh/$name',dev.displayName,1,true)
+                mqtt.publishMsg (sTopic+'/refresh/$retained','true',1,true)
+            }
+    }
+        
 
 	if (publishList.size() != 0) {
     log(">>>>>>>>>>>>>>>>>>>>>   Publish List is $publishList","LOG") 
@@ -2329,11 +2377,15 @@ def synchDevices() {
 def devLoop(deviceList, attribute, handler, type='none'){  // This registers a single 'named' attribute for a device  
         mqtt = getChildDevice("MQTT: Child device driver")
 		deviceList.each{ dev->
+            
 			mydName = dev.name
 			myName = dev.displayName
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
+
+            
+            
             
             
                 def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
@@ -2610,7 +2662,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre4 beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre5 beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -6718,8 +6770,11 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
        
     }
     }
-
     matchDevice = findDeviceByName(matchName)
+    if (!checkProperty(matchDevice,cmd)) {
+        log ("This command is not permitted to this device $matchDevice","WARN")
+        return
+    }
     log("Device Matched - " + matchDevice?.displayName + " - for command $cmd  $json", "DEBUG")
   if (json=='false') {
     if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
@@ -7028,8 +7083,17 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
         if (matchDevice != null) {
             matchDevice.setSuffix(state)
         }
-    
-    }  else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
+    } else if (cmd == "refresh") {
+        if (matchDevice != null) {
+                if (matchDevice.hasCommand("refresh")){
+                         matchDevice.refresh()
+                         mqtt.publishMsg("homie/${atomicState.normHubName}/${normalize(matchName)}/refresh", 'true', 1, false)
+                         pauseExecution (250) 
+                         mqtt.publishMsg("homie/${atomicState.normHubName}/${normalize(matchName)}/refresh", 'false', 1, false)
+                }  
+        }    
+    }  
+   else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
   }
   else {    // json payload
        if (cmd == 'ramp') {
@@ -7049,4 +7113,11 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
   }
 }
 
-
+def checkProperty (dev,cmd) {
+    props= matchDevice.getDataValue("properties")
+    if ((props!=null)&&(props!='')&&(props!=' ')) {
+        if ((props.contains(cmd))) return (true) else return (false)
+    }
+      // TODO   need to match only xyz and not say xyzextra or extraxyx
+    return (false)
+   }   
