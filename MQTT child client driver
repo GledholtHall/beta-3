@@ -23,6 +23,7 @@ metadata {
 		command "reset"
         command "connect"
         command "disconnect"
+        //command "simulateError",["String"]
 		//command "setStateVar", ["String","String"]
         //command "setLogLevel", ["Integer"]
         
@@ -82,7 +83,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3c"
+    version="beta 3d pre 5"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -110,7 +111,8 @@ def connect() {
     if (mqttState) {
         log ( "Connected to MQTT broker ${state.MQTTBroker}","BLUE")
         subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
-        sendEvent(name: "MQTTStatus", value: "Connect", isStateChange: true)  // allow continue
+        //sendEvent(name: "MQTTStatus", value: "Connect", isStateChange: true)  // allow continue
+        parent.mqttStatus ("Connect")
         state.connectionAttempts = 0
         state.seq2=0
     }
@@ -192,10 +194,12 @@ void mqttClientStatus(String message) {
         catch (e)
         {
         }
+       
         log ("Broker: ${message} Will restart in 5 seconds","ERROR")
-        runIn (4,"adviseStatus")
+        runIn (5,"adviseStatus")
        // sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // will reset
-        runIn (5,"reset")  
+       // cant allow client to reconnect itself as it will have no subscriptions  (unless not clean sesssion)
+       //        runIn (5,"reset")  
     }
     else {
         log ("Broker: ${message}","INFO")
@@ -204,7 +208,8 @@ void mqttClientStatus(String message) {
             log ("MQTT broker connected","INFO")
             subscribeTopic ('homie/'+state.normHubName+'/$implementation/heartbeat')
             sendEvent (name: "presence", value: "present")
-            sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // allow continue
+            parent.mqttStatus(status)
+            //sendEvent(name: "MQTTStatus", value: status, data: [message:message], isStateChange: true)  // allow continue
             // need to advise app have a connection to allow it to continue.
         }
     }
@@ -212,7 +217,8 @@ void mqttClientStatus(String message) {
 
 void adviseStatus() {
     log ("Advising app that broker is down","WARN")
-    sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
+    parent.mqttStatus ("Error")
+    //sendEvent(name: "MQTTStatus", value: "Error:", data: [message:"reset"], isStateChange: true)  // will reset
 }
 
 def publishMsg(String topic, String payload, int qos, String retained) {  // overload for RM compatibility
@@ -894,6 +900,17 @@ def disconnect()
             log ("Disconnecting failed : ${e.message}", "WARN")
         }
 	}
+
+def simulateError (type) {
+            try {
+        	interfaces.mqtt.disconnect()
+            log ("Force Disconnected MQTT", "INFO")
+            } catch(e) {
+            log ("Disconnecting : ${e.message}", "WARN")
+            }
+            parent.mqttStatus ("Error")
+}
+    
 	
 def setStateVar(var,value,value2=null) {	//DEPRECATED // Better to expose as attributes 
     return
