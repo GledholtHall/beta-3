@@ -2707,7 +2707,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pDevClass = ',"device_class": "fan"'
         pDevClass=''
         sFanTopic="homie/${atomicState.normHubName}/${normName}/speed"
-        pCmd = ',"command_topic": "' + sFanTopic + '/set2"'
+        pCmd = ',"command_topic": "' + sFanTopic + '/set"'
         pStatus = ',"state_topic": "' + "homie/${atomicState.normHubName}/${normName}/onoff"+'"'
         pSpeedMode = ',"speed_state_topic": "' + sFanTopic +'"'
         pSpeedCmd = ',"speed_command_topic": "' + sFanTopic + '/set"'
@@ -2729,8 +2729,8 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         
         pState = ',"state_topic":"'+ sTopic + '"'
         pState = ''
-        pON=''
-        pOFF=''
+        pON= ',"payload_on": "on"'
+        pOFF= ',"payload_off": "off"'
         pUOM=''
         //pON
         //pOFF
@@ -2739,7 +2739,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pValTemp
         //pID 
 
-        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pCmd+pStatus+pSpeedMode+pSpeedCmd+pSpeedModes+pSpeedLow+pSpeedMed+pSpeedHigh+'}'   
+        payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pCmd+pON+pOFF+pStatus+pSpeedMode+pSpeedCmd+pSpeedModes+pSpeedLow+pSpeedMed+pSpeedHigh+'}'   
     } 
     
     
@@ -4046,9 +4046,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 			    mqtt.publishMsg (sTopic+'/'+category+'/$settable',settable,1,true,atomicState.suppress)   
 			    mqtt.publishMsg (sTopic+'/'+category+'/$name',name.toString(),1,true,atomicState.suppress)  
 			    //mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"float",1,true)
-			    mqtt.publishMsg (sTopic+'/'+category+'/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)
-			    //mqtt.publishMsg (sTopic+'/'+category+'/$unit',UOM,1,true)
-              }
+			    mqtt.publishMsg (sTopic+'/'+category+'/$retained',(settings?.homieStatesPersist).toString(),1,true,atomicState.suppress)              }
         }
                 if (state!=null) {
                     if(tempUnits=="Celsius x.x°C" && category=="measure-temperature") state = state.toFloat().round(1)
@@ -4430,6 +4428,12 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 HAtype="fan"  
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
+                addProperty(sTopic,'onoff',device)
+                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$datatype',"enum",1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$format','[off,on]',1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$name',name,1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$retained',"true",1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$settable',"true",1,true,atomicState.suppress)
             }
             else if (xType=='switch'){  //TODO
 				category='onoff'
@@ -4526,7 +4530,11 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 if (state!=null) {
                     if(tempUnits=="Celsius x.x°C" && category=="measure-temperature") state = state.toFloat().round(1)
                     else if(tempUnits=="Fahrenheit x.x°C" && category=="measure-temperature") state = state.toFloat().round(1)
-                    mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)  //                          <<<<<   This publishes the actual event value
+                    mqtt.publishMsg (sTopic+'/'+category,state.toString(),1,settings?.homieStatesPersist)  //<<<<<   This publishes the actual event value
+                    if (category=='speed') {
+                      if (state=='off') mqtt.publishMsg (sTopic+'/onoff','off',1,settings?.homieStatesPersist)
+                        else mqtt.publishMsg (sTopic+'/onoff','on',1,settings?.homieStatesPersist)
+                    }
                 }
     checkNodes(8,name)	
 	if (evt==null && id != 99998888) {  // this will limit HADiscovery to startup or 'upon request' for devices
@@ -6660,8 +6668,6 @@ def sendPayload(topic,payload) {
 
 def findDeviceByName(name) {
     matchDevice = null
-    
-    log  ("Prime","LOG")
     settingsDevices = [settings?.switches, settings?.dimmers, settings?.lights, settings?.colour, settings?.colourT, settings?.colourMode, settings?.contactSensors]
     //atomicState.test=settingsDevices
     settingsDevices.find{
@@ -6676,8 +6682,6 @@ def findDeviceByName(name) {
         }
     }
     if (matchDevice != null) return matchDevice
-    log  ("Mid","LOG")
-    
     settingsDevices = [settings?.everything, settings?.alarms, settings?.batterysensors, settings?.bulbs, settings?.buttons, settings?.buttonshold, settings?.buttonsPush,
         settings?.buttonsrelease, settings?.buttonsdtap, settings?.carbonmonoxidesensors, settings?.chimes, 
         settings?.fans, settings?.garagedoors, settings?.humiditysensors, settings?.illuminancesensors, settings?.keypads, 
@@ -6695,9 +6699,7 @@ def findDeviceByName(name) {
             }
         }
     }
-    if (matchDevice != null) return matchDevice
-    log  ("Low","LOG")
-    
+    if (matchDevice != null) return matchDevice   
     settingsDevices = [settings?.globVars, settings?.gVars]  //search globals last 
     settingsDevices.find{
         if (matchDevice != null) {
@@ -6711,10 +6713,7 @@ def findDeviceByName(name) {
         }
     }
     if (matchDevice==null) log  ("Fail","LOG")
-    
     return matchDevice // could be null as nothing matched
-    
-    
 }
 
 
@@ -6840,23 +6839,24 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
         log ("This command is not permitted to this device $matchDevice","WARN")
         return
     }
-    log("Device Matched - " + matchDevice?.displayName + " - for command $cmd  $json", "KH")
+    //log("Device Matched - " + matchDevice?.displayName + " - for command $cmd  $json", "LOG")
     if (json=='false') {
       if (cmd == "onoff" || cmd == "switch") { // TODO convert to select / case   'switch' comes from RGB devices
 		if (matchDevice != null) {
-			//log("Here in commandP $cmd", "WARN")
             //proceed = dAttIsEnabled(it, cmd)
 			proceed = dAttIsEnabled(matchDevice, cmd)
-			if (!proceed) {
+			if (!proceed) {     
 				log("$device: ../onoff/set BLOCKED", "WARN")
 				return
 			}
 			OnValues = "on,true,yes,1"
 			OffValues = "off,false,no,0"
 			if (OnValues.contains(state.toLowerCase())) {
-				matchDevice.on()
+                if (matchDevice.typeName=='Virtual Fan Controller') matchDevice.setSpeed('on')
+				else matchDevice.on()
 			} else if (OffValues.contains(state.toLowerCase())) {
-				matchDevice.off()
+                if (matchDevice.typeName=='Virtual Fan Controller') matchDevice.setSpeed('off')
+				else matchDevice.off()
 			} else log("Unknown state value " + state + " - need to add to lookup", "WARN")
 		}
       } else if (cmd == "dim") {
