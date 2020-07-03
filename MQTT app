@@ -1110,7 +1110,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','beta 3b',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre6 beta 3d',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -1477,6 +1477,8 @@ def deviceEventSubscribes() {   // This raises subscriptions for all enabled dev
     subscribe(var_VirtualShade, "switch", otherDevices)  //check
     subscribe(var_VirtualShade, "windowShade", otherDevices)  //check
     subscribe(var_VirtualLock,"lock",locked)  //check
+    subscribe(var_VirtualFanController, "speed", otherDevices)  //check
+    log ("subscribed to Fans $var_VirtualFanController","KH")
 
 /*
     subscribe(var_RM Connector Variable,what,what)
@@ -1674,6 +1676,7 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
     //  a variable attribute will not get registered as it has no matching capability !
         changes=true
         devList.each { dev ->
+           log.error "Registering: $dev"
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
                 log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KGREEN")
@@ -3419,8 +3422,8 @@ def stringToList(maps,what='cmd') {
 
 
 def jsonSplit (source,value=null){  
-    /*
-//                     source is the json string and value is the value you want including in returned payload
+/*
+                       source is the json string and value is the value you want including in returned payload
                        this allowed composite json values with only one 'variable' and the other preset e.g. an ID
  source example        topic1/topic2/topic3{key:}{"key2: "one", "key2": "two"}
                        _____________________ json ____________________________
@@ -3451,6 +3454,7 @@ def jsonSplit (source,value=null){
             }
        }
     else  log ('jsonSplit:  No source','WARN')
+    log ("jsonSplit:  $source  $value","INFO")
     return [source,value]
 }
 
@@ -4307,11 +4311,15 @@ def locationEvent(evt,name=null,type=null,state=null,device=null,multiple=false)
 }
        
 def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {  // subs must be used in HA discovery as device must be separated into multiple entities 
-	mqtt = getChildDevice("MQTT: Child device driver")
+	
+    log ("otherDevices:  $device", "LOG")
+    log ("OtherDevices:  $device", "LOG")
+    mqtt = getChildDevice("MQTT: Child device driver")
     if (evt!=null)
 	{
 		name=evt.displayName
         device=evt.getDevice()
+        log ("OtherDevices:  $device", "LOG")
 		state=evt.value
 		xType=evt.name  // attribute name
         log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()}", "DEBUG")
@@ -4425,7 +4433,8 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 				category='speed'
                 settable="true"
                 dType='fan'
-                HAtype="fan"  
+                HAtype="fan"
+                log.error "HERE $state"
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
                 addProperty(sTopic,'onoff',device)
@@ -5178,7 +5187,7 @@ def checkNodes(p,name) {
              atomicState.nodes+=','+normName
             if (settings?.homiePublish) {
                 mqtt = getChildDevice("MQTT: Child device driver")
-                mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',atomicState.nodes,1,true,atomicState.suppress)
+                mqtt.publishMsg ("homie/${atomicState.normHubName}/"+'$nodes',atomicState.nodes,1,true)
         }
         }
 }
