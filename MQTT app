@@ -251,9 +251,12 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
             sensor=false
             
             settings[varCap].each { virtDev ->
-                if (virtDev !=null) virtDev.updateDataValue("mqtt", "enabled")
-                log ("Subscribe to events from virtual device $virtDev","KH")
-                registerAll (virtDev,0,'auto')
+                if (virtDev !=null) virtDev.updateDataValue("mqtt", "enabled") // remove ?? not useful as we don't ever disable them ...
+                dOrigin = (virtDev.getDataValue("origin"))
+                if (dOrigin=='user') {  // This avoids registering HE devices (again)
+                    log ("Subscribe to events from virtual device $virtDev","DEBUG")
+                    registerAll (virtDev,0,'auto')
+                }
             }
             
             dType = "capability.nowt"
@@ -267,39 +270,76 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                     atomicState.tete =[]
                     //atomicState.virtList=[]
                     input(name: varCap, type: dType, title: "MQTT enabled $capability devices",description: null, multiple: true, required: false, submitOnChange: true)
-              
+                    //input(name: "testIt", type: dType , title: "MQTT enabled $capability devices",description: null, multiple: true, required: false, submitOnChange: true)
+                    //input "testIt", dType, title: "Devices", multiple: true, required: false
+
                 }
             
                 section {
                     //app.updateSetting("vDev",["none"])
-                    app.removeSetting("vDev")
+                    app.removeSetting("vDev")     
+                    
+  /*                  
+                    
+
+                        log.error "pruning"
+                        List myDeviceList = []
+                        //settings[varCap].each { myDevice ->
+                        testIt.each { myDevice ->
+                          dOrigin = (myDevice.getDataValue("origin"))
+                          if(dOrigin=='user') {
+                              log.error  "Added $myDevice.displayName"
+                              myDeviceList.add(myDevice.id)
+                          }
+                            else log.error  "Removed $myDevice.displayName"
+                        }
+                        log.error myDeviceList     
+                    app.updateSettingWithType("testIt", myDeviceList, "capability")
+                    //app.updateSettingWithType(testIt, myDeviceList, "device")
+
+ */                   
+                    
+                    
+                    
                     
                     input(name: "vDev", type: dType, title: "Edit this $capability device",description: null, multiple: false, required: false, submitOnChange: true)
                     if (vDev == null) {
-                        app.updateSetting("vDevName","")
+                        
+                        
+                     
+                    app.updateSetting("vDevName","")
                     input (name: "vDevName",type: "text", title: "... or create a new virtual $capability device called ..." , required: false, submitOnChange: true)
-
                     if (vDevName != null){
-                    atomicState.newDevName=vDevName  // This isn't enough to identify it from an incoming MQTT message - can only identify by topic
-                    atomicState.newDevType=capability
-                    input "newVDev", "button", title: "Create device $vDevName", textColor: "green"
+                        atomicState.newDevName=vDevName  // This isn't enough to identify it from an incoming MQTT message - can only identify by topic
+                        atomicState.newDevType=capability
+                        input "newVDev", "button", title: "Create device $vDevName", textColor: "green"
                     }
                     else atomicState.vDevName=""
                     }
-                    else {
-                        input "oldVDev", "button", title: "Delete device $vDev", textColor: "red"
-//                        input "editVDev", "button", title: "Edit device $vDev", textColor: "blue"
-                    }
                     
+                    
+                    
+                    
+                    else {
+                        enabled=false
+                        settings[varCap].each { enab ->
+                            if ("$enab"=="$vDev")  enabled=true
+                        }
+                         // input "editVDev", "button", title: "Edit device $vDev", textColor: "blue"
+                        dOrigin = (vDev.getDataValue("origin"))
+                        if (dOrigin=="user" && (enabled)) input "oldVDev", "button", title: "Delete device $vDev", textColor: "red"
+                    }                   
                 }
         }
         atomicState.first=false
+/*
         if (atomicState.first) {  // entry from another page
-            //atomicState.first=false
+            atomicState.first=false
         }
-        else {
-            if (vDev) { // && atomicState.edit) {  // this is the whole page
-            
+*/
+
+        if (vDev) { // && atomicState.edit) {  // this is the whole page
+          if (dOrigin=='user') {
             log ("Selected Device is ${vDev.displayName}  - last was {$atomicState.vDev}","DEBUG")            
             if (vDev.displayName==atomicState.vDev) newDev=false else newDev=true
 //            log ("newDev is $newDev","LOG")
@@ -329,6 +369,7 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                    // input(name: "atts", type: "enum", title: "Device Attributes",description: null, multiple: false, required: false, submitOnChange: true, options: ["Hi","you"])
                 }
             atomicState.vDev=vDev.displayName
+/*            
             dEnabled=null
             try {
                 dEnabled = (vDev.getDataValue("mqtt"))
@@ -343,10 +384,10 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                     vDev.updateDataValue("mqtt", "false")
                 dEnabled="false"
             }
-            
-
-          if (dEnabled=="enabled") {   // don't display if not mqtt enabled                     
-                section {
+          if (dEnabled=="enabled") {   // don't display if not mqtt enabled  
+*/
+          if (enabled) {   // don't display if not mqtt enabled
+              section {
                     temp=atomicState.attList.sort()
                     atomicState.attList=temp
                     //input(name: "atts", type: "enum", title: "Device atomic Attributes",description: null, multiple: false, required: false, submitOnChange: true, options: atomicState.attList)
@@ -654,20 +695,16 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
         catch (e) {}
         //atomicState.edit=false      
         } // not enabled for MQTT
-              
-        }  //if (vDev)
 
-        
-            else
-                if ($vDev!=null){
-                section (title: "This device <b> $vDev </b> is not enabled on MQTT") {       
+           else {
+                if (vDev!=null) section (title: "This device <b> $vDev </b> is not enabled above") { }
                 }
-        } //atomicState.first
-                }
+            } //origin=user
+            else section (title: "This device <b> $vDev </b> was not created within this app and so can't be edited here") { }
         } // end dynamic page    (vDev)          
        //atomicState.edit=false 
     }
-
+}
 //=========================================================================================================================================================================================================================================
 
 def discovery() {  // can use atomicState vars in this section
@@ -1198,7 +1235,6 @@ def initialize() {
 }
 
 def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT) come in here
-    //log.error "mqttChange"
     if (evt.name=='switch') {
         mqtt = getChildDevice("MQTT: Child device driver")
         topic = evt.device.getDataValue("switch_Cmd")
@@ -1676,7 +1712,6 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
     //  a variable attribute will not get registered as it has no matching capability !
         changes=true
         devList.each { dev ->
-           log.error "Registering: $dev"
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
                 log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KGREEN")
@@ -2433,7 +2468,7 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
                 else if (handler=="audioDevices") audioDevices(null, myName, type, dev.currentValue(attribute),dev) //,multiple)
 			}
             
-            else log("No [" + attribute + "] attribute value available for [${myName}]", "INFO")
+            else log("No [" + attribute + "] attribute value available for [${myName}]", "DEBUG")
 		}
 }
 
@@ -2688,7 +2723,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre6 beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre7 beta 3d","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3482,8 +3517,10 @@ def switched(evt, name=null, type=null, state=null, device=null) {
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
-                cMQTT=device.getDataValue("mqtt")
-                if (cMQTT=="enabled") {
+                //cMQTT=device.getDataValue("mqtt")
+                cOrigin=device.getDataValue("origin")
+                //if (cMQTT=="enabled") {
+                if (cOrigin=="user") {
                     cTopic=device.getDataValue("switch_Cmd")
                     if(cTopic!=null) { 
                         maps=device.getDataValue("switch_MAP")
@@ -3552,22 +3589,27 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
-                cMQTT=device.getDataValue("mqtt")
-                if (cMQTT=="enabled") {
+                //cMQTT=device.getDataValue("mqtt")
+                cOrigin=device.getDataValue("origin")
+                //if (cMQTT=="enabled") {
+                if (cOrigin=="user") {
                    cTopic=device.getDataValue("switch_Cmd") 
                    if(cTopic!=null) { 
                         maps=device.getDataValue("switch_MAP")
+                       log ("Map: " + maps,"LOG")
                         mapList = stringToList(maps)
-
+                        log ("MapList: " + mapList,"LOG")
                     
-                      //  log ("States are " + mapList[0] + " and " + mapList[1],"LOG")                                               
+                       log ("States 0 and 1 are " + mapList[0] + " and " + mapList[1] ,"LOG")
+                       //log ("State2 is " + mapList[2] ,"LOG")
+                       //log ("State3 is " + mapList[3] ,"LOG")
                         if (state=='on') {
                             if (mapList[0] != null) state = mapList[0]
                         }
                         if (state=='off') {
                             if (mapList[1] != null) state = mapList[1]
                         }                        
-                        (cTopic,b,state)=jsonSplit(cTopic,evt.value)
+                        (cTopic,state)=jsonSplit(cTopic,state)
                         log ("(bbb) Sending $state command to MQTT $cTopic","LOG")
                         mqtt.publishMsg (cTopic,state,1,false)
                     }
@@ -3630,10 +3672,12 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
-                cMQTT=device.getDataValue("mqtt")
-                if (cMQTT=="enabled") {
+                //cMQTT=device.getDataValue("mqtt")
+                cOrigin=device.getDataValue("origin")
+                //if (cMQTT=="enabled") {
+                if (cOrigin=="user") {
                     cTopic=device.getDataValue("level_Cmd")
-                    (cTopic,state)=jsonSplit(cTopic,evt.value)
+                    (cTopic,state)=jsonSplit(cTopic,state)
                     if((cTopic!=null) && (cTopic.length()!=0)) {
                         log ("(ccc) Sending command to MQTT $cTopic","INFO")
                         mqtt.publishMsg (cTopic,state,1,false)
@@ -4417,7 +4461,8 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 				category='position'
                 settable="true"
                 dType='shade'
-                HAtype="cover"
+                HAtype="cover"subscribe to events from
+                
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
             }
@@ -4434,7 +4479,6 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 settable="true"
                 dType='fan'
                 HAtype="fan"
-                log.error "HERE $state"
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
                 addProperty(sTopic,'onoff',device)
@@ -6842,7 +6886,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
     }
     }
     matchDevice = findDeviceByName(matchName)
-    if (matchDevice==null) log.error "matchDevice is $matchDevice $matchName"
+    if (matchDevice==null) log ("matchDevice is $matchDevice $matchName","LOG")
     
     if (!checkProperty(matchDevice,cmd)) {
         log ("This command is not permitted to this device $matchDevice","WARN")
