@@ -254,7 +254,7 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                 if (virtDev !=null) virtDev.updateDataValue("mqtt", "enabled") // remove ?? not useful as we don't ever disable them ...
                 dOrigin = (virtDev.getDataValue("origin"))
                 if (dOrigin=='user') {  // This avoids registering HE devices (again)
-                    log ("Subscribe to events from virtual device $virtDev","DEBUG")
+                    log ("Subscribe to events from virtual device $virtDev","KH")
                     registerAll (virtDev,0,'auto')
                 }
             }
@@ -1692,7 +1692,7 @@ def registerSpecificAttribute (devList, count, attribute, handlerReq='auto'){   
           dev.capabilities.each { cap ->
                   cap.attributes.each { attr ->
                       if ("${attr}" == "${attribute}") {
-                          log ("$dev Specific Att Registration of $cap $attr", "KGREEN")                          
+                          log ("$dev Specific Att Registration of $cap $attr", "KH")                          
                           prop=whatProperty(attr.name)
                           normName=normalize(dev.displayName)
                           key = "homie/${atomicState.normHubName}/$normName"
@@ -1714,7 +1714,7 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
         devList.each { dev ->
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
-                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KGREEN")
+                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KH")
 
                 prop=whatProperty(attr.name)
                 normName=normalize(dev.displayName)
@@ -1932,7 +1932,10 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
     }
     else log ("Everything events subscribe to $device $attribute $handler","DEBUG") // Is attribute inclusion right here ???
     log ("Events subscribe to $device $attribute $handler","DEBUG") // Is attribute inclusion right here ???
-    if (handler!="") subscribe(device,attribute,handler)
+    if (handler!="") {
+        subscribe(device,attribute,handler)
+        log ("LookUp Event Handler Reg: $device $attribute $handler", "KH")
+    }
     else log ("No handler found for $device $attribute","WARN")
 }
 
@@ -2707,7 +2710,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         return
     }
 	normName = normalize(name+nameSuffix) 
-	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","KH")
+	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","LOG")
     if (id==0) log ("The ID for device $name $type was 0","WARN")
 	if (atomicState.nameMap.containsValue(name)) log ("Found in nameMap" + name, "DEBUG") else log ("NOT Found in nameMap" + name, "DEBUG")
 		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'   //TODO tidy
@@ -3503,17 +3506,22 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 	if (evt!=null)
 	{
 		device=evt.getDevice()
+        if (atomicState.block==device.displayName){
+            log ("Blocking Event (switched): $device.displayName","KH")
+            return
+        }
         name=evt.displayName
 		state=evt.value
 		xName=evt.name
         // need to determine if MQTT caused this or HE
-        
-		//log ("From MQTT ? [$device] $atomicState.lastDev  $name [$state]", "LOG")																  
+
+		log ("Event: From MQTT ? [$device] $atomicState.lastDev  $name [$state]", "LOG")																  
         if (atomicState.lastDev== "$name [$state]") {
             atomicState.lastDev=''
-            //log("Wiping atomicState.lastdev","LOG")
+            log("switched Wiping atomicState.lastdev","LOG")
         }
         else {
+            log ("switched LastDev: $atomicState.lastDev  This:  $name [$state]","KH")
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
@@ -3523,7 +3531,7 @@ def switched(evt, name=null, type=null, state=null, device=null) {
                 if (cOrigin=="user") {
                     cTopic=device.getDataValue("switch_Cmd")
                     if(cTopic!=null) { 
-                        log ("$device.displayName has switch_MAP of $cTopic","LOG")
+                        log ("$device.displayName has switch_Cmd of $cTopic","LOG")
                         maps=device.getDataValue("switch_MAP")
                         mapList = stringToList(maps)
                         
@@ -3581,12 +3589,23 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
     if (evt!=null)
 	{
 		device=evt.getDevice()
+        //log ("Comparison: $atomicState.block  $device.displayName","KH")
+        if (atomicState.block==device.displayName){
+            log ("Blocking Event (switchedDim): $device.displayName","KH")
+            return
+        }
         name=evt.displayName
 		state=evt.value
 		xName=evt.name
-		log("Device is SwitchedDim ${state}  ${name} ${xName}", "LOG")
-        if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
+		log("Event: Device is SwitchedDim ${state}  ${name} ${xName}", "LOG")
+        //if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
+        if (atomicState.lastDev== "$name [$state]") {
+            atomicState.lastDev=''
+            log("switchedDim Wiping atomicState.lastdev","LOG")
+        }
+        
         else {
+            log ("switchedDim LastDev: $atomicState.lastDev  This:  $name [$state]","KH")
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
@@ -3596,8 +3615,8 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
                 if (cOrigin=="user") {
                    cTopic=device.getDataValue("switch_Cmd") 
                    if(cTopic!=null) {
-                       log ("$device.displayName has level_MAP of $cTopic","LOG")
-                        maps=device.getDataValue("switch_MAP")
+                       log ("$device.displayName has switch_Cmd of $cTopic","LOG")
+                       maps=device.getDataValue("switch_MAP")
                        log ("Map: " + maps,"LOG")
                         mapList = stringToList(maps)
                         log ("MapList: " + mapList,"LOG")
@@ -3665,16 +3684,21 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
 	if (evt!=null)
 	{
 	    device=evt.getDevice()
+        if (atomicState.block==device.displayName){
+            log ("Blocking Event (switchedDim): $device.displayName","KH")
+            
+            return
+        }
         name=evt.displayName
 		state=evt.value
 		xName=evt.name
-		//log ("Device dimmed ${state}  ${name}", "LOG")
+		log ("Event: Device dimmed ${state}  ${name}", "LOG")
         if (atomicState.lastDev== "$name [$state]") atomicState.lastDev=''
         else {
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
             {
-                //cMQTT=device.getDataValue("mqtt")
+                log ("Dim LastDev: $atomicState.lastDev  This:  $name [$state]","KH")//cMQTT=device.getDataValue("mqtt")
                 cOrigin=device.getDataValue("origin")
                 //if (cMQTT=="enabled") {
                 if (cOrigin=="user") {
@@ -5641,7 +5665,7 @@ def LookupManual (param,message,topic,json) {
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
             jValue="${e.value}"
             jKey="${e.key}"
-            log ("${e.key} : ${e.value}","TRACE")
+            log ("json: ${e.key} : ${e.value}","TRACE")
             if (value.startsWith('[') && value.endsWith(']')) log ("This has a nested json payload ${value}","DEBUG")
             jsonTopic=deviceID+"{${e.key}:}"
             list=checkTopicLink (jsonTopic)
@@ -5677,7 +5701,7 @@ def LookupManual (param,message,topic,json) {
 }
 
 def LookupAction(LookupID,jKey,jValue,json,deviceID) {
-    log ("LookupAction $jKey [$jValue] $json  $deviceID","TRACE")
+    //log ("LookupAction $jKey [$jValue] $json  $deviceID","LOG")
         if (LookupID != null) {	
         device=getChildDevice(LookupID.toString())
         if (device) {
@@ -5713,7 +5737,7 @@ def LookupAction(LookupID,jKey,jValue,json,deviceID) {
 
 def updateDeviceAttribute(device,attr,value) {
                 devType=device.getTypeName()
-                //log("Virtual device $device [$devType] found in topicLink $attr update [$value]","LOG") 
+                //log("Virtual device $device [$devType] found in topicLink $attr update [$value]","TRACE") 
                 found=true 
                 //atomicState.lastDev="$device [$value]"   // This updates to the last value on MQTT ie the _MAP value
                 if (devType.contains("Sensor")||devType=="Virtual Presence"){  // Why do I want to know if it's a sensor ??
@@ -5723,6 +5747,11 @@ def updateDeviceAttribute(device,attr,value) {
                 }
                 else deviceAction (device, devType,value,attr)  
 }
+def unblockEvents(){
+    log ("Unblocked","KH")
+    atomicState.blocked="FREE"
+}
+    
 
     
 def deviceAction (child,devType,value,attr=null)  {
@@ -5745,16 +5774,21 @@ def deviceAction (child,devType,value,attr=null)  {
 
         if (mapList[0] == value) {
             atomicState.lastDev="$child [on]"   // This normally updates to the last value on MQTT ie the MAP value
+            atomicState.block=child.displayName
+            log ("Block (switch): $child.displayName", "KH")
             child.on() 
         }
         else if (mapList[1] == value){
             atomicState.lastDev="$child [off]"   // This normally updates to the last value on MQTT ie the MAP value
+            atomicState.block=child.displayName
+            log ("Block (switch): $child.displayName", "KH")
             child.off()
         }
+        runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
         }
 
    else if (attr=='level'&& child.hasCommand('setLevel')) {
-            log ("Actioning a level device $child $value","LOG")
+            log ("Actioning a level device $child $value","TRACE")
             try {  // see if its numeric  // LookupLevel should be valid
 					float convertedNumber = Float.parseFloat(value)  // TODO messy and repeatedly used
                      LookupLevel=child.getDataValue("max_Level")
@@ -5764,6 +5798,8 @@ def deviceAction (child,devType,value,attr=null)  {
 						 if (devType=="system")child.setLevel (value.toInteger(),0)
                          //child.setLevel (value.toInteger(),0)
                          val=value.toInteger()
+                         atomicState.block=child.displayName
+                         log ("Block (level): $child.displayName", "KH")
                          child.setLevel (val,0)
                          atomicState.lastDev="$child [$val]"   // This updates to the last value on MQTT ie the MAP vlaue
 						 log ("There's no corresponding MaxValue for " + data.topic, "WARN")
@@ -5772,6 +5808,8 @@ def deviceAction (child,devType,value,attr=null)  {
                         val = convertLevel (value.toInteger(), LookupLevel.toInteger())
 						log ( " The numeric payload for " + child.displayName + " was converted from " + value + " to " + val, "DEBUG")
 						//if (vDev) child.setLevel(intLevel,1)
+                        atomicState.block=child.displayName
+                        log ("Block (level): $child.displayName", "KH")
                         child.setLevel(val,1)
                         atomicState.lastDev="$child [$val]"   // This normally updates to the last value on MQTT ie the MAP vlaue
                         //else child.toLevel(adjLevel,1) 
@@ -6800,7 +6838,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
     log("$cmd received $state", "TRACE")
     dMatch = false
     everyThing == (settings?.everything)
-    log("Everything Lookup for  " + name + " is " + matchName + " [" + atomicState.nameMap[index] + "] ", "DEBUG")
+    log("Everything Lookup for  " + name + " is " + matchName + " [" + atomicState.nameMap[index] + "] ", "LOG")
 
     if (matchName == "hub") {
         if (cmd == "mode") {
