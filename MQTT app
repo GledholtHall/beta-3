@@ -1031,6 +1031,7 @@ def initialize() {
     countTry=5
     aborting=false
     atomicState.abort=false  // just added remove later
+    unblockUnblock() // this will continue to run every 20 seconds
     //if (atomicState.abortable) atomicState.abort=true  // JUST TO TEST - will abort if still possible
     while (atomicState.abort) {
         log("Awaiting earlier App to abort [$countTry]","WARN")
@@ -1303,7 +1304,7 @@ def addProperty(key,value,device=null) {
         }
     temp[key] = temp[key] + "," + value
     value=temp[key]
-    if (att=='ramp') log ("Updating property data value $device[$value]","KH")
+    //if (att=='ramp') log ("Updating property data value $device[$value]","KH")
     if (device!=null)   device.updateDataValue("properties", value) //value)
     //mqtt.publishMsg (key+'/$properties',"${temp[key]}",1,true,atomicState.suppress)
     mqtt.publishMsg (key+'/$properties',"${temp[key]}",1,true)
@@ -1514,7 +1515,6 @@ def deviceEventSubscribes() {   // This raises subscriptions for all enabled dev
     subscribe(var_VirtualShade, "windowShade", otherDevices)  //check
     subscribe(var_VirtualLock,"lock",locked)  //check
     subscribe(var_VirtualFanController, "speed", otherDevices)  //check
-    log ("subscribed to Fans $var_VirtualFanController","KH")
 
 /*
     subscribe(var_RM Connector Variable,what,what)
@@ -1934,7 +1934,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
     log ("Events subscribe to $device $attribute $handler","DEBUG") // Is attribute inclusion right here ???
     if (handler!="") {
         subscribe(device,attribute,handler)
-        log ("LookUp Event Handler Reg: $device $attribute $handler", "KH")
+        log ("LookUp Event Handler Reg: $device $attribute $handler", "TRACE")
     }
     else log ("No handler found for $device $attribute","WARN")
 }
@@ -2710,7 +2710,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         return
     }
 	normName = normalize(name+nameSuffix) 
-	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","LOG")
+	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","TRACE")
     if (id==0) log ("The ID for device $name $type was 0","WARN")
 	if (atomicState.nameMap.containsValue(name)) log ("Found in nameMap" + name, "DEBUG") else log ("NOT Found in nameMap" + name, "DEBUG")
 		sTopic="homie/${atomicState.normHubName}/${normName}"+'/onoff'   //TODO tidy
@@ -3589,7 +3589,7 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
     if (evt!=null)
 	{
 		device=evt.getDevice()
-        //log ("Comparison: $atomicState.block  $device.displayName","KH")
+        log ("Comparison: $atomicState.block  $device.displayName","KH")
         if (atomicState.block==device.displayName){
             log ("Blocking Event (switchedDim): $device.displayName","KH")
             return
@@ -5747,9 +5747,18 @@ def updateDeviceAttribute(device,attr,value) {
                 }
                 else deviceAction (device, devType,value,attr)  
 }
+
+def unblockUnblock(){   // This is just a safeguard should a device be left blocked (which should never happen)
+    if (atomicState.block!='FREE') {
+        log ("UnblockedUnblock ran for $atomicState.block","WARN")
+        runInMillis(100,"unblockEvents")
+    }
+    runIn (20,"unblockUnblock")  //reschedule every 20 secs
+}
+
 def unblockEvents(){
     log ("Unblocked","KH")
-    atomicState.blocked="FREE"
+    atomicState.block="FREE"
 }
     
 
@@ -5775,6 +5784,8 @@ def deviceAction (child,devType,value,attr=null)  {
         if (mapList[0] == value) {
             if (child.currentSwitch != 'on'){ 
                 atomicState.lastDev="$child [on]"   // This normally updates to the last value on MQTT ie the MAP value
+//ToDo: Refinement - check if these can overlap (atomicState.block!='FREE) and if so wait a few mS (only) for it to become free      <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ToDO            
+//ToDo: Make 100mS a settings value if needed
                 atomicState.block=child.displayName
                 log ("Block (switch): $child.displayName", "KH")
                 child.on() 
