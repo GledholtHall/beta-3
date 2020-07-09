@@ -5773,18 +5773,26 @@ def deviceAction (child,devType,value,attr=null)  {
     if (attr!=null && mapList!=null && attr=='switch') { // && child.hasCommand('off')) {  //assume it will have 'on' too
 
         if (mapList[0] == value) {
-            atomicState.lastDev="$child [on]"   // This normally updates to the last value on MQTT ie the MAP value
-            atomicState.block=child.displayName
-            log ("Block (switch): $child.displayName", "KH")
-            child.on() 
+            if (child.currentSwitch != 'on'){ 
+                atomicState.lastDev="$child [on]"   // This normally updates to the last value on MQTT ie the MAP value
+                atomicState.block=child.displayName
+                log ("Block (switch): $child.displayName", "KH")
+                child.on() 
+                runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
+            }
+            else log ("Switch $child already on","TRACE")
         }
         else if (mapList[1] == value){
-            atomicState.lastDev="$child [off]"   // This normally updates to the last value on MQTT ie the MAP value
-            atomicState.block=child.displayName
-            log ("Block (switch): $child.displayName", "KH")
-            child.off()
+            if (child.currentSwitch != 'off'){
+                atomicState.lastDev="$child [off]"   // This normally updates to the last value on MQTT ie the MAP value
+                atomicState.block=child.displayName
+                log ("Block (switch): $child.displayName", "KH")
+                child.off()
+                runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
+            }
+            else log ("Switch $child already off","TRACE")
         }
-        runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
+       
         }
 
    else if (attr=='level'&& child.hasCommand('setLevel')) {
@@ -5795,24 +5803,28 @@ def deviceAction (child,devType,value,attr=null)  {
 					 log ("MaxLevel is $LookupLevel and name is $child","TRACE")
                      if (LookupLevel == "null" || LookupLevel==null)
 					 {
-						 if (devType=="system")child.setLevel (value.toInteger(),0)
-                         //child.setLevel (value.toInteger(),0)
-                         val=value.toInteger()
-                         atomicState.block=child.displayName
-                         log ("Block (level): $child.displayName", "KH")
-                         child.setLevel (val,0)
-                         atomicState.lastDev="$child [$val]"   // This updates to the last value on MQTT ie the MAP vlaue
-						 log ("There's no corresponding MaxValue for " + data.topic, "WARN")
+						 val=value.toInteger()
+                         if (child.currentLevel != val) { 
+                             //if (devType=="system")child.setLevel (val,0)
+                             atomicState.block=child.displayName
+                             log ("Block (level): $child.displayName", "KH")
+                             child.setLevel (val,0)
+                             atomicState.lastDev="$child [$val]"   // This updates to the last value on MQTT ie the MAP vlaue
+                             runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
+						     log ("There's no corresponding MaxValue for " + data.topic, "DEBUG")
+                         }
 					 }
 					else {
                         val = convertLevel (value.toInteger(), LookupLevel.toInteger())
-						log ( " The numeric payload for " + child.displayName + " was converted from " + value + " to " + val, "DEBUG")
-						//if (vDev) child.setLevel(intLevel,1)
-                        atomicState.block=child.displayName
-                        log ("Block (level): $child.displayName", "KH")
-                        child.setLevel(val,1)
-                        atomicState.lastDev="$child [$val]"   // This normally updates to the last value on MQTT ie the MAP vlaue
-                        //else child.toLevel(adjLevel,1) 
+						    if (child.currentLevel != val) {
+                                log ( " The numeric payload for " + child.displayName + " was converted from " + value + " to " + val, "DEBUG")
+						        //if (vDev) child.setLevel(intLevel,1)
+                                atomicState.block=child.displayName
+                                log ("Block (level): $child.displayName", "KH")
+                                child.setLevel(val,1)
+                                atomicState.lastDev="$child [$val]"   // This normally updates to the last value on MQTT ie the MAP vlaue
+                                runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
+                            }
 					}
 			}
 			catch (Exception e1) {
