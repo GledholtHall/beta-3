@@ -1,4 +1,4 @@
-# pre release beta 3d   - the import URL's will be wrong in these pre versions
+# pre release beta 3e   - the import URL's will be wrong in these pre versions
 
 H E update
 For testing only 
