@@ -2709,7 +2709,9 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         log ("Blocking advertising dimmer $name as a switch to HA ","TRACE")
         return
     }
-	normName = normalize(name+nameSuffix) 
+    if (nameSuffix!=null) log ("NameSuffix at HA advertise was removed: [$nameSuffix]","KH")
+	//normName = normalize(name+nameSuffix)
+    normName = normalize(name)
 	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","TRACE")
     if (id==0) log ("The ID for device $name $type was 0","WARN")
 	if (atomicState.nameMap.containsValue(name)) log ("Found in nameMap" + name, "DEBUG") else log ("NOT Found in nameMap" + name, "DEBUG")
@@ -2758,11 +2760,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pSpeedLow = ',"payload_low_speed": "low"'
         pSpeedMed = ',"payload_medium_speed": "medium"'
         pSpeedHigh = ',"payload_high_speed": "high"'
-      
-        //pMode = ',"mode_state_topic": "homie/development/v2thermostat/mode"'
-        //pModeCmd = ',"mode_command_topic": "homie/development/v2thermostat/mode/set"'
-        //pModes = ',"modes": "homie/development/v2thermostat/modes/$format"'
-        //pModes=',"modes": "[“auto”, “off”, “cool”, “heat”]"'
+     
         
 
 
@@ -2797,28 +2795,30 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pSetpointCmd=''
         pHSetpointCmd=''
         pCSetpointCmd=''
+        //pName = '"name":"'+name+nameSuffix+'"'
+        pName = '"name":"'+name +'"'
         
         pDevClass = ',"device_class": "climate"'
-        pCurrTemp = ',"current_temperature_topic": "homie/development/v2thermostat/measure-temperature"'
+        pCurrTemp = ',"current_temperature_topic": "homie/'+"$atomicState.normHubName/$normName" + '/measure-temperature"'
         
-        pSetpoint = ',"temperature_state_topic": "homie/development/v2thermostat/cooling-setpoint"'
-        pSetpointCmd = ',"temperature_command_topic": "homie/development/v2thermostat/cooling-setpoint/set"'
+        pSetpoint = ',"temperature_state_topic":"homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint"'
+        pSetpointCmd = ',"temperature_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint/set"'
         
-        pHSetpoint = ',"temperature_high_state_topic": "homie/development/v2thermostat/heating-setpoint"'
-        pHSetpointCmd = ',"temperature_high_command_topic": "homie/development/v2thermostat/heating-setpoint/set"'
+        pHSetpoint = ',"temperature_high_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint"'
+        pHSetpointCmd = ',"temperature_high_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint/set"'
 
-        pCSetpoint = ',"temperature_low_state_topic": "homie/development/v2thermostat/cooling-setpoint"'
-        pCSetpointCmd = ',"temperature_low_command_topic": "homie/development/v2thermostat/cooling-setpoint/set"'
+        pCSetpoint = ',"temperature_low_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint"'
+        pCSetpointCmd = ',"temperature_low_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint/set"'
 
 
 
-        pFanMode = ',"fan_mode_state_topic": "homie/development/v2thermostat/fanmode"'
-        pFanCmd = ',"fan_mode_command_topic": "homie/development/v2thermostat/fanmode/set"'
-        //pFanModes = ',"fan_modes": "homie/development/v2thermostat/fanmodes/$format"'
+        pFanMode = ',"fan_mode_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/fanmode"'
+        pFanCmd = ',"fan_mode_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/fanmode/set"'
+        //pFanModes = ',"fan_modes": "homie/'+"$atomicState.normHubName/$normName" + '/fanmodes/$format"'
       
-        pMode = ',"mode_state_topic": "homie/development/v2thermostat/mode"'
-        pModeCmd = ',"mode_command_topic": "homie/development/v2thermostat/mode/set"'
-        //pModes = ',"modes": "homie/development/v2thermostat/modes/$format"'
+        pMode = ',"mode_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/mode"'
+        pModeCmd = ',"mode_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/mode/set"'
+        //pModes = ',"modes": "homie/'+"$atomicState.normHubName/$normName" + '/$format"'
         //pModes=',"modes": "[“auto”, “off”, “cool”, “heat”]"'
         
 
@@ -4385,17 +4385,15 @@ def locationEvent(evt,name=null,type=null,state=null,device=null,multiple=false)
        
 def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {  // subs must be used in HA discovery as device must be separated into multiple entities 
 	
-    log ("otherDevices:  $device", "LOG")
-    log ("OtherDevices:  $device", "LOG")
+    
     mqtt = getChildDevice("MQTT: Child device driver")
     if (evt!=null)
 	{
 		name=evt.displayName
         device=evt.getDevice()
-        log ("OtherDevices:  $device", "LOG")
 		state=evt.value
 		xType=evt.name  // attribute name
-        log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()}", "DEBUG")
+        log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()}", "KH")
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
         log ("lastDev is $atomicState.lastDev        $name [$state]","TRACE")
@@ -4447,7 +4445,6 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         normName = normalize(name)
 		normxName = normalize(xName)
         settable="false"
-        // log ("otherDevices called with ${name}/${xType}  ${state.toString()}", "ERROR")
 		HAtype='unknown'
         category=xType
 		UOM=''
@@ -4508,14 +4505,25 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
                 settable="true"
                 dType='fan'
                 HAtype="fan"
-                mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
-                addProperty(sTopic,'onoff',device)
-                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$datatype',"enum",1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$format','[off,on]',1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$name',name,1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$retained',"true",1,true,atomicState.suppress)
-                mqtt.publishMsg (sTopic+'/'+'onoff'+'/$settable',"true",1,true,atomicState.suppress)
+                origin=device.getDataValue("origin")
+                log ("origin: $origin","WARN")
+                if (origin=='user') { // this is an adhoc virtual device
+                    // was this a command I need to send - status comes from the mqtt device ?
+                    log ("this is an adhoc device","WARN")
+                    cmdTopic=device.getDataValue("speed_Cmd")
+                    if (cmdTopic != null ) log.error "This device has a cmd topic $cmdTopic  $state"
+                    mqtt.publishMsg (cmdTopic,state,1,settings?.homieStatesPersist)
+                }
+                else {  //publish on homie
+                    mqtt.publishMsg (sTopic+'/'+category+'/$format','[low,medium-low,medium,medium-high,high,on,off,auto]',1,true,atomicState.suppress)
+                    mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
+                    addProperty(sTopic,'onoff',device)
+                    mqtt.publishMsg (sTopic+'/'+'onoff'+'/$datatype',"enum",1,true,atomicState.suppress)
+                    mqtt.publishMsg (sTopic+'/'+'onoff'+'/$format','[off,on]',1,true,atomicState.suppress)
+                    mqtt.publishMsg (sTopic+'/'+'onoff'+'/$name',name,1,true,atomicState.suppress)
+                    mqtt.publishMsg (sTopic+'/'+'onoff'+'/$retained',"true",1,true,atomicState.suppress)
+                    mqtt.publishMsg (sTopic+'/'+'onoff'+'/$settable',"true",1,true,atomicState.suppress)
+                }
             }
             else if (xType=='switch'){  //TODO
 				category='onoff'
