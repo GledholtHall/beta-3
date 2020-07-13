@@ -3,7 +3,7 @@
 import java.security.MessageDigest
 
 metadata {
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta/MQTT%20Client%20driver") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -83,7 +83,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3d pre 5"
+    version="beta 3e pre2"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -347,7 +347,7 @@ def heartbeat (seqNum=0) {
 }
 
 def bufferEmpty(i){
-    log  ("MQTT message queue idle","ERROR")
+    log  ("MQTT message queue idle","INFO")
 }
 
 
@@ -546,12 +546,33 @@ def parse(String description) {
                 return // evt3
 			}
 			else if (topic[3]=='state'){
-				parent.HAClimateEventP(topic[2],payload[0],topic[1])
+				parent.HAClimateEventP(topic[2],payload[0],topic[3])
                 //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
 				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
                 return // evt4
 			}
-			log ("Unhandled HA (b) climate MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+            
+//TODO combine these with OR if all the same
+            
+            else if (topic[3]=='temperature'){
+				parent.HAClimateEventP(topic[2],payload[0],topic[3])
+                //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
+				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
+                return // evt4
+			}
+            else if (topic[3]=='hvac_mode'){
+				parent.HAClimateEventP(topic[2],payload[0],topic[3])
+                //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
+				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
+                return // evt4
+			}
+            else if (topic[3]=='current_temperature'){
+				parent.HAClimateEventP(topic[2],payload[0],topic[3])
+                //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
+				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
+                return // evt4
+			}
+			log ("Unhandled HA (d) climate MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
             parent.HAUnknown (topic[2],payload[0])
             //def evt59 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt59
