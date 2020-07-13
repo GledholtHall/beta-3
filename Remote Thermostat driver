@@ -56,7 +56,7 @@ metadata {
         //command "endManualControl"
 		command "emergencyHeat"
         command "setTemperature", ["Integer"]
-        command "thermostatSetpoint", ["Integer"]
+        command "setthermostatSetpoint", ["Integer"]
         //command "setThermostatOperatingState",["String"]  //should be enum
         //command "setThermostatFanMode",["String"]  // should be enum
         command(
@@ -358,7 +358,7 @@ def setTemperature(temperature){
     sendEvent(name: "temperature", value: temperature, isStateChange: true)
 }
 
-def thermostatSetpoint(temperature) {
+def setThermostatSetpoint(temperature) {
     sendEvent(name: "thermostatSetpoint", value: temperature, isStateChange: true)
 }
 
