@@ -56,7 +56,7 @@ metadata {
         //command "endManualControl"
 		command "emergencyHeat"
         command "setTemperature", ["Integer"]
-        command "setthermostatSetpoint", ["Integer"]
+        command "setThermostatSetpoint", ["Integer"]
         //command "setThermostatOperatingState",["String"]  //should be enum
         //command "setThermostatFanMode",["String"]  // should be enum
         command(
