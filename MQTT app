@@ -1148,7 +1148,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre1 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre2 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -2728,7 +2728,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre1 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre2 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -2801,15 +2801,20 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pDevClass = ',"device_class": "climate"'
         pCurrTemp = ',"current_temperature_topic": "homie/'+"$atomicState.normHubName/$normName" + '/measure-temperature"'
         
-        pSetpoint = ',"temperature_state_topic":"homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint"'
-        pSetpointCmd = ',"temperature_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint/set"'
-        
+        pSetpoint = ',"temperature_state_topic":"homie/'+"$atomicState.normHubName/$normName" + '/thermostat-setpoint"'
+        pSetpointCmd = ',"temperature_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/thermostat-setpoint/set"'
+/*        
         pHSetpoint = ',"temperature_high_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint"'
         pHSetpointCmd = ',"temperature_high_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint/set"'
 
         pCSetpoint = ',"temperature_low_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint"'
         pCSetpointCmd = ',"temperature_low_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint/set"'
+*/
+        pHSetpoint = ',"temperature_high_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint"'
+        pHSetpointCmd = ',"temperature_high_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/cooling-setpoint/set"'
 
+        pCSetpoint = ',"temperature_low_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint"'
+        pCSetpointCmd = ',"temperature_low_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/heating-setpoint/set"'
 
 
         pFanMode = ',"fan_mode_state_topic": "homie/'+"$atomicState.normHubName/$normName" + '/fanmode"'
@@ -3310,6 +3315,11 @@ def start_HADiscovery(evt){
     
 
 def subscribeHADevices(evt=null) {  // ToDo - these might benefit from pacing
+    if (atomicState.HA==null){
+        log ("There is no HA statestream topic configured","ERROR")
+        return
+    }
+        
 	log ("Adding HA switches, lights and sensors friendly names topics ", "INFO")
     mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.subscribeTopic(atomicState.HA+'/sensor/+/device_class') // // this creates device
@@ -3940,7 +3950,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 		HAtype='unknown'
 		UOM=''
         mqtt = getChildDevice("MQTT: Child device driver")
-        log ("NB: $device.displayName attribute_MAP's not yet supported","WARN")
+        log ("NB: $device.displayName attribute_MAP's not yet supported","LOG")
     	if (settings?.homiePublish) {  //TODO use case rather than if else if
 		   sTopic="homie/${atomicState.normHubName}/${normName}"
 //        if (!atomicState.suppress){
@@ -5556,9 +5566,7 @@ def HAClimateFriendlyP(name,label,type) {  // TODO merge with above
 	if ((settings?.HA_Climates != null) && (settings?.HA_Climates.contains (name)))  createChildDevice (name, type, "HA", label)
 
 }
-def HAClimateEventP(name,payload,type) { 
-    log ("TODO: Climate Control from HA not implemented yet $name  $payload  $type","WARN")
-}
+
     
 def HADeviceTrackerFriendlyP(name,label,type) {  // TODO merge with above
 	temp = atomicState.HADeviceTrackerDevices
@@ -5601,6 +5609,7 @@ def HAPresenceFriendlyP(name,label,type) {  // TODO merge with above
 	}
     if ((settings?.HA_Presence != null) && (settings?.HA_Presence.contains (name)))  createChildDevice (name, type, "HA", label)
 }
+
 def HAUnknown(name,payload) { //TODO merge with above
 	temp = atomicState.HAUnknownDevices
 	if (temp==null) temp=[]
@@ -5615,6 +5624,9 @@ def HAUnknown(name,payload) { //TODO merge with above
     log ("HA unsupported device $name", "INFO")
 	//createChildDevice (name, type, "HA", name)
 }
+
+
+    
 
 
 def wildcardTopics(topics) {  // TODO merge with above
@@ -5997,6 +6009,23 @@ def sensorEvent(name,b,type,bool) {
     //sensorAction(child, evt.value,data.status)
     sensorAction(child,type,payload,type)   //TODO Attribute pass ??
 }
+
+def HAClimateEventP(name,payload,type) { 
+    //log ("Received a climate event from $name payload $payload is $type", "LOG")
+	child=getChildDevice("MQTT:homie_"+name)
+    if (child==null) child=getChildDevice("MQTT:HA_[climate]_"+name)
+    if (child==null) {
+        log ("Couldn't find climate child called $name" , "WARN")
+        return
+    }
+    //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
+    if (type=='current_temperature') child.setTemperature(payload)
+    else if (type=='state') child.setThermostatMode(payload)
+    else if (type=='hvac_action') child.setThermostatOperatingState(payload)
+    else if (type=='temperature') child.setThermostatSetPoint(payload)
+    else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
+    //child.setLevel(level.toInteger(),1) 
+}
     
 def sensorAction(child,devType,val,attr=null) {
     log ("SensorAction check attribute received was intended $attr [$val]", "DEBUG")
@@ -6289,10 +6318,12 @@ def MD5(String s){
     MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
 }
 
-def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
+def createChildDevice(name, type, system, friendlyName=null, dType='default',seq=o) {
     mqtt = getChildDevice("MQTT: Child device driver")
 	// friendlyname may not be available yet so name will have been passed and it will be renamed later in reNameDev()
 	log("CreateDevice called for $system " + name + " " + friendlyName + "  :  " + type,"LOG")
+    if (friendlyName==null) friendlyName=name
+    log ("Friendly Name: $friendlyName","KH")
 	if (name==null) return
 	//if (atomicState.started) return // TODO Stops creation of devices after timed startup has elapsed - but also stops ongoing incremental discovery.... decide which to use
 	devEnabled=false
@@ -6316,7 +6347,6 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
 			if (settings?.HA_Sensors.contains (name))
 			{
 				devEnabled=true
-                log ("Device ENABLED $name","LOG")
 			}
             //else log ("Device not enabled $name","LOG")
 		}
@@ -6360,7 +6390,7 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
         else if ((type=='climate')&&(settings?.HA_Climates != null)) {
 			if (settings?.HA_Climates.contains (name))
 			{
-				devEnabled=true
+                devEnabled=true
 			}
 		}
         else if ((type=='lock')&&(settings?.HA_Locks != null)) {
@@ -6459,7 +6489,6 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
 	else if (type=='group') {
         devType='Virtual Switch'  // TODO check if a HA group can have a level ?
         attrData="switch"
-        attrData="switch"
     }
     else if (type=='input_boolean') { 
         devType="Virtual Contact Sensor"    //devType='Virtual Switch'   //This should be a contact sensor or something as not controllabe
@@ -6475,8 +6504,9 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
     else if (type=='cover') devType='Virtual Shade'
     else if (type=='device_tracker') devType= "Virtual Presence"
     else if (type=='climate') {
-            log ("HA climate device not implemented yet, no device created", "WARN")
-            return
+        devType = "Virtual Thermostat"
+        //log ("HA climate device not implemented yet, no device created for $name", "WARN")
+        attrData='multiple'
     }
     else if (type=='sensor' || type=='binary_sensor') {
         log ("Got a sensor of type ${dType}", "WARN")
@@ -6536,7 +6566,7 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
 				childDevice = addChildDevice(nameSpace, devType, prefix+name, null,[completedSetup: true, label: pfix + friendlyName])
 				child=getChildDevice(prefix+name)  //hmm seems childDevice is not a device object .ge
 			    if (child == null) log ("Child was never created" + prefix+name , "KH")
-			    else log ("Created Child device with label "+ child.label,"INFO")
+			    else log ("Created Child device with label "+ child.label,"KH")
 			    atomicState.count++			
 			    childrenCount = getChildDevices().size()		
     log ("Type for $name is $type [$attrData]", "LOG")
@@ -6614,6 +6644,23 @@ def createChildDevice(name, type, system, friendlyName, dType='default',seq=o) {
                             //child.updateDataValue("${attrData}_ON","on")
                             //child.updateDataValue("${attrData}_OFF","off")
                             child.updateDataValue("${attrData}_MAP","[on,off]")
+                        }
+					}
+                    else if (type == 'climate') {
+                        if (attrData!=null) {   // attrData will be 'multiple'
+                            mqtt.subscribeTopic(atomicState.HA+'/climate/'+name+'/#')  // This is to support individual subscribes
+                            child.updateDataValue("thermostatMode_Topic",atomicState.HA+'/climate/'+name+'/state')
+                            child.updateDataValue("state_Cmd", atomicState.HA+'/climate/'+name+'/state/cmd')
+                            child.updateDataValue("temperature_Topic", atomicState.HA+'/climate/'+name+'/current_temperature')
+                            child.updateDataValue("temperature_Cmd", atomicState.HA+'/climate/'+name+'/current_temperature/cmd')
+                            child.updateDataValue("thermostat-setpoint_Topic", atomicState.HA+'/climate/'+name+'/temperature')
+                            child.updateDataValue("thermostat-setpoint_Topic", atomicState.HA+'/climate/'+name+'/temperature/cmd')
+                            child.updateDataValue("hermostatOperatingState_Topic", atomicState.HA+'/climate/'+name+'/hvac_mode')
+                           
+                            //child.updateDataValue("switch_ON","on")
+                            //child.updateDataValue("switch_OFF","off")
+                            //child.updateDataValue("switch_MAP","[on,off]")
+                            //child.updateDataValue("max_Level","255")
                         }
 					}
 					else {
@@ -7159,7 +7206,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
 				// }
 			} else log("Unknown state value " + state + " - need to add to lookup", "WARN")
 		}
-    } else if (cmd == "heating-setpoint" || cmd == "cooling-setpoint" || cmd == "mode" || cmd == "fanmode") { // Thermostat temporary handler shouldnt be in sensors
+    } else if (cmd == "heating-setpoint" || cmd == "cooling-setpoint" || cmd=="thermostat-setpoint" || cmd == "mode" || cmd == "fanmode") { // Thermostat temporary handler shouldnt be in sensors
 		if (matchDevice != null) {
 			//log ("Changing $cmd of ${matchDevice.displayName} to $state","ERROR")                        
 			if (cmd == "heating-setpoint") {
@@ -7170,6 +7217,10 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
 				setTemp = state.toFloat()
 				//thermDev.setCoolingSetpoint(state)
 				matchDevice.setCoolingSetpoint(setTemp)
+            } else if (cmd == "thermostat-setpoint") {
+				setTemp = state.toFloat()
+				//thermDev.setCoolingSetpoint(state)
+				matchDevice.setThermostatSetpoint(setTemp)
 			} else if (cmd == "mode") matchDevice.setThermostatMode(state)
 			else if (cmd == "fanmode") matchDevice.setThermostatFanMode(state)
         }
