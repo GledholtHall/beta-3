@@ -6669,7 +6669,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                             child.updateDataValue("thermostatFanMode_Cmd", atomicState.HA+'/climate/'+name+'/fan_mode/cmd')
                             child.updateDataValue("thermostat-setpoint_Topic", atomicState.HA+'/climate/'+name+'/temperature')
                             child.updateDataValue("thermostat-setpoint_Cmd", atomicState.HA+'/climate/'+name+'/temperature/cmd')
-                            child.updateDataValue("thermostatOperatingState_Topic", atomicState.HA+'/climate/'+name+'/hvac_mode')
+                            child.updateDataValue("thermostatOperatingState_Topic", atomicState.HA+'/climate/'+name+'/hvac_action')
                            
                             //child.updateDataValue("switch_ON","on")
                             //child.updateDataValue("switch_OFF","off")
