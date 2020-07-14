@@ -560,7 +560,7 @@ def parse(String description) {
 				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
                 return // evt4
 			}
-            else if (topic[3]=='hvac_mode'){
+            else if (topic[3]=='hvac_action'){
 				parent.HAClimateEventP(topic[2],payload[0],topic[3])
                 //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
 				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
