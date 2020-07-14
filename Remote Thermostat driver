@@ -48,6 +48,7 @@ metadata {
 		capability "Polling"
 		capability "Refresh"
 		attribute "tadoMode", "string"
+        attribute "thermostatOperatingState", "String"
 		//command "temperatureUp"
         //command "temperatureDown"
         //command "heatingSetpointUp"
@@ -57,6 +58,7 @@ metadata {
 		command "emergencyHeat"
         command "setTemperature", ["Integer"]
         command "setThermostatSetpoint", ["Integer"]
+        command "setThermostatOperatingState",["String","Boolean"]
         //command "setThermostatOperatingState",["String"]  //should be enum
         //command "setThermostatFanMode",["String"]  // should be enum
 /*
@@ -382,8 +384,14 @@ def setThermostatSetpoint(temperature, event=true) {
     }
 }
 
-def setThermostatOperatingState(mode) {
+def setThermostatOperatingState(mode,event=true) {
     sendEvent(name: "thermostatOperatingState", value: mode, isStateChange: true)
+    if (event) {
+        cmdTopic= device.getDataValue("thermostat-setpoint_Cmd")
+        if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+            parent.mqttPublishMsg (cmdTopic,temperature,1,false) 
+        }
+    }
 }
 
 def setThermostatFanMode(mode,event=true) {
