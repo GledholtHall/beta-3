@@ -368,10 +368,18 @@ def setThermostatSetpoint(temperature) {
 
 def setThermostatOperatingState(mode) {
     sendEvent(name: "thermostatOperatingState", value: mode, isStateChange: true)
+    cmdTopic= device.getDataValue("thermostatOperatingState_Cmd")
+    if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+        parent.mqttPublishMsg (cmdTopic,mode,1,false) 
+    }
 }
 
 def setThermostatFanMode(mode) {
     sendEvent(name: "thermostatFanMode", value: mode, isStateChange: true)
+    cmdTopic= device.getDataValue("thermostatFanMode_Cmd")
+    if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+        parent.mqttPublishMsg (cmdTopic,mode,1,false) 
+    }
     
 }
 
