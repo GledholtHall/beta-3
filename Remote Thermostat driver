@@ -59,7 +59,8 @@ metadata {
         command "setThermostatSetpoint", ["Integer"]
         //command "setThermostatOperatingState",["String"]  //should be enum
         //command "setThermostatFanMode",["String"]  // should be enum
-        command(
+/*
+command(
              "setThermostatOperatingState", 
              [
                 [
@@ -68,6 +69,7 @@ metadata {
                 ]
              ]
         )
+/*
         command(
              "setThermostatFanMode", 
              [
@@ -76,7 +78,7 @@ metadata {
                      "constraints":["on","circulate","auto"]
                 ]
              ]
-        )
+*/
 
 	}
 
