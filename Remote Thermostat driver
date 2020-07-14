@@ -273,10 +273,12 @@ def setCoolingSetpoint(targetTemperature) {
     sendEvent(name: "coolingSetpoint", value: targetTemperature, isStateChange: true)
 }
 
-def setThermostatMode(requiredMode){
-    cmdTopic= device.getDataValue("state_Cmd")
-    if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
-        parent.mqttPublishMsg (cmdTopic,requiredMode,1,false) 
+def setThermostatMode(requiredMode,event=true){
+    if (event) {
+        cmdTopic= device.getDataValue("state_Cmd")
+        if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+            parent.mqttPublishMsg (cmdTopic,requiredMode,1,false) 
+        }
     }
 	switch (requiredMode) {
     	case "heat":
@@ -326,7 +328,7 @@ def heatingSetpointUp(){
 
 def heatingSetpointDown(){
 	log.debug "Current SetPoint Is " + (device.currentValue("thermostatSetpoint")).toString()
-  if ((device.currentValue("thermostatSetpoint").toInteger() + 1 ) > state.MaxHeatTemp){
+    if ((device.currentValue("thermostatSetpoint").toInteger() + 1 ) > state.MaxHeatTemp){
     log.debug("cannot increase heat setpoint, its already at the maximum level of " + state.MaxHeatTemp)
     } else {
       int newSetpoint = (device.currentValue("thermostatSetpoint")).toInteger() - 1
@@ -358,15 +360,23 @@ def endManualControl(){
 	//parent.endManualControl(this)
 }
 
-def setTemperature(temperature){
+def setTemperature(temperature,event){
     sendEvent(name: "temperature", value: temperature, isStateChange: true)
+    if (event) {
+        cmdTopic= device.getDataValue("temperature_Cmd")   // not sure this is a useful cmd to send ?
+        if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+            parent.mqttPublishMsg (cmdTopic,temperature,1,false) 
+        }
+    }
 }
 
-def setThermostatSetpoint(temperature) {
+def setThermostatSetpoint(temperature, event=true) {
     sendEvent(name: "thermostatSetpoint", value: temperature, isStateChange: true)
-    cmdTopic= device.getDataValue("thermostat-setpoint_Cmd")
-    if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
-        parent.mqttPublishMsg (cmdTopic,temperature,1,false) 
+    if (event) {
+        cmdTopic= device.getDataValue("thermostat-setpoint_Cmd")
+        if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+            parent.mqttPublishMsg (cmdTopic,temperature,1,false) 
+        }
     }
 }
 
@@ -374,11 +384,13 @@ def setThermostatOperatingState(mode) {
     sendEvent(name: "thermostatOperatingState", value: mode, isStateChange: true)
 }
 
-def setThermostatFanMode(mode) {
+def setThermostatFanMode(mode,event=true) {
     sendEvent(name: "thermostatFanMode", value: mode, isStateChange: true)
-    cmdTopic= device.getDataValue("thermostatFanMode_Cmd")
-    if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
-        parent.mqttPublishMsg (cmdTopic,mode,1,false) 
+    if (event) {
+        cmdTopic= device.getDataValue("thermostatFanMode_Cmd")
+        if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
+            parent.mqttPublishMsg (cmdTopic,mode,1,false) 
+        }
     }
     
 }
