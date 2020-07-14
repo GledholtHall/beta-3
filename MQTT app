@@ -6024,14 +6024,19 @@ def HAClimateEventP(name,payload,type) {
         log ("Couldn't find climate child called $name" , "WARN")
         return
     }
+    if (child.typeName.startsWith("Remote ")) sendCmd=false else sendCmd=true
     //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
-    if (type=='current_temperature') child.setTemperature(payload)
-    else if (type=='state') child.setThermostatMode(payload)
+    if (type=='current_temperature') child.setTemperature(payload,false)
+    else if (type=='state') child.setThermostatMode(payload,sendCmd)
         else if (type=='hvac_action') {
-            child.setThermostatOperatingState(payload)
+            child.setThermostatOperatingState(payload,sendCmd)
             log ("Payload for hvac_action was " +payload, "LOG")
         }
-    else if (type=='temperature') child.setThermostatSetpoint(payload)
+    else if (type=='temperature') {
+        //child.setThermostatSetpoint(payload)
+        child.setThermostatSetpoint(payload,sendCmd)
+        // need to add devType test for Remote Thermostat
+    }
     else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
     //child.setLevel(level.toInteger(),1) 
 }
@@ -7231,7 +7236,9 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
             } else if (cmd == "thermostat-setpoint") {
 				setTemp = state.toFloat()
 				//thermDev.setCoolingSetpoint(state)
-				matchDevice.setThermostatSetpoint(setTemp)
+                log ("TODO devType test for .setThermostatSetpoint","KH")
+				//matchDevice.setThermostatSetpoint(setTemp)
+                matchDevice.setThermostatSetpoint(setTemp,false)  // added this for "Remote Thermostat" only - should add devType if
 			} else if (cmd == "mode") matchDevice.setThermostatMode(state)
 			else if (cmd == "fanmode") matchDevice.setThermostatFanMode(state)
         }
