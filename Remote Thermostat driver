@@ -368,7 +368,7 @@ def setThermostatSetpoint(temperature) {
 
 def setThermostatOperatingState(mode) {
     sendEvent(name: "thermostatOperatingState", value: mode, isStateChange: true)
-    cmdTopic= device.getDataValue("thermostatOperatingState_Cmd")
+    cmdTopic= device.getDataValue("state_Cmd")
     if (cmdTopic!=null||cmdTopic!=' '||cmdTopic!='') {
         parent.mqttPublishMsg (cmdTopic,mode,1,false) 
     }
