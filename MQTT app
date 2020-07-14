@@ -3594,6 +3594,12 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 		else if (settings?.HADiscovery) log ("HADiscovery switched discarded for ${name}","DEBUG")
 }
 
+def mqttPublishMsg(topic,payload,num,retain) {
+    mqtt = getChildDevice("MQTT: Child device driver")
+    mqtt.publishMsg (topic,payload.toString(),num,retain)
+}
+
+
 def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do we pass devType in here ??
 	mqtt = getChildDevice("MQTT: Child device driver")
     if (evt!=null)
@@ -6021,8 +6027,11 @@ def HAClimateEventP(name,payload,type) {
     //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
     if (type=='current_temperature') child.setTemperature(payload)
     else if (type=='state') child.setThermostatMode(payload)
-    else if (type=='hvac_action') child.setThermostatOperatingState(payload)
-    else if (type=='temperature') child.setThermostatSetPoint(payload)
+        else if (type=='hvac_action') {
+            child.setThermostatOperatingState(payload)
+            log ("Payload for hvac_action was " +payload, "LOG")
+        }
+    else if (type=='temperature') child.setThermostatSetpoint(payload)
     else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
     //child.setLevel(level.toInteger(),1) 
 }
@@ -6504,7 +6513,9 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
     else if (type=='cover') devType='Virtual Shade'
     else if (type=='device_tracker') devType= "Virtual Presence"
     else if (type=='climate') {
-        devType = "Virtual Thermostat"
+        //devType = "Virtual Thermostat"
+        devType = "Remote Thermostat"
+        nameSpace='ukusa'
         //log ("HA climate device not implemented yet, no device created for $name", "WARN")
         attrData='multiple'
     }
@@ -6652,10 +6663,10 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                             child.updateDataValue("thermostatMode_Topic",atomicState.HA+'/climate/'+name+'/state')
                             child.updateDataValue("state_Cmd", atomicState.HA+'/climate/'+name+'/state/cmd')
                             child.updateDataValue("temperature_Topic", atomicState.HA+'/climate/'+name+'/current_temperature')
-                            child.updateDataValue("temperature_Cmd", atomicState.HA+'/climate/'+name+'/current_temperature/cmd')
+                            child.updateDataValue("thermostatFanMode_Cmd", atomicState.HA+'/climate/'+name+'/fan_mode/cmd')
                             child.updateDataValue("thermostat-setpoint_Topic", atomicState.HA+'/climate/'+name+'/temperature')
-                            child.updateDataValue("thermostat-setpoint_Topic", atomicState.HA+'/climate/'+name+'/temperature/cmd')
-                            child.updateDataValue("hermostatOperatingState_Topic", atomicState.HA+'/climate/'+name+'/hvac_mode')
+                            child.updateDataValue("thermostat-setpoint_Cmd", atomicState.HA+'/climate/'+name+'/temperature/cmd')
+                            child.updateDataValue("thermostatOperatingState_Topic", atomicState.HA+'/climate/'+name+'/hvac_mode')
                            
                             //child.updateDataValue("switch_ON","on")
                             //child.updateDataValue("switch_OFF","off")
