@@ -474,7 +474,7 @@ def parse(String description) {
 			}
             parent.HAUnknown (topic[2],payload[0])
             //def evt57 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]],seq: sequence, isStateChange: true)  //, key2: payload]
-			log ("Unhandled HA (a) switch MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (a) switch MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             return // evt57
 		}
         else if (topic[1]=='light') { 
@@ -496,7 +496,7 @@ def parse(String description) {
 				//def evt9 = createEvent(name: "Dim", value: topic[2], data: [level: payload[0]], maxLevel: "255", type: topic[1], isStateChange: true)
                 return // evt9
 			}
-			log ("Unhandled HA (c) light MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (b) light MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
                 parent.HAUnknown (topic[2],payload[0])
                 //def evt62 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
                 return // evt62
@@ -515,7 +515,7 @@ def parse(String description) {
 				//log ("Device ${topic[2]} is a HA group and is turned " +payload[0], "TRACE")
                 return // evt4
 			}
-			log ("Unhandled HA (b) group MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (c) group MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt58 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]], isStateChange: true)  //, key2: payload]
             return // evt58
@@ -533,7 +533,7 @@ def parse(String description) {
                 parent.inputBooleanEventP(topic[2],payload[0],topic[1],topicFull)
                 return// evt4
 			}
-			log ("Unhandled HA (b) input_boolean MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (d) input_boolean MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt58 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt58
@@ -572,7 +572,7 @@ def parse(String description) {
 				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
                 return // evt4
 			}
-			log ("Unhandled HA (d) climate MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (e) climate MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt59 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt59
@@ -590,7 +590,7 @@ def parse(String description) {
 				//log ("Device ${topic[2]} is a HA input boolean and is " +payload[0], "TRACE")
                 return // evt4
 			}
-			log ("Unhandled HA (b) device_tracker MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (f) device_tracker MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt60 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0], type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt60
@@ -616,7 +616,7 @@ def parse(String description) {
 				log ("Device ${topic[2]} is a HA cover and is at position " +payload[0], "TRACE")
                 return //evt4
 			}
-			log ("Unhandled HA (b) cover MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (g) cover MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt61 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0]],seq: sequence, isStateChange: true)  //, key2: payload]
             return // evt61
@@ -636,7 +636,7 @@ def parse(String description) {
 				//log ("Device ${topic[2]} is a HA lock and is " +payload[0], "TRACE")
                 return // evt4
 			}
-			log ("Unhandled HA (b) lock MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (h) lock MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             //def evt61 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt61
@@ -655,12 +655,12 @@ def parse(String description) {
 				//log ("Device ${topic[2]} is a HA person and is " +payload[0], "TRACE")
                 return // evt44
 			}
-			log ("Unhandled HA (b) person MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled HA (i) person MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             // def evt63 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return //evt63
 		}          
-			log ("Unhandled (d) HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "WARN")
+			log ("Unhandled (j) HA MQTT parse  ${topic[0]}  ${topic[1]}  ${topic[2]}  ${topic[3]} - ${payload[0]}", "DEBUG")
             parent.HAUnknown (topic[2],payload[0])
             // def evt64 = createEvent(name: "HAUnknown", value: topic[2], data: [status: payload[0],seq: sequence], isStateChange: true)  //, key2: payload]
             return // evt64
