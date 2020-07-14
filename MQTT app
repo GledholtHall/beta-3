@@ -6024,20 +6024,11 @@ def HAClimateEventP(name,payload,type) {
         return
     }
     if (child.typeName.startsWith("Remote ")) sendCmd=false else sendCmd=true
-    //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
     if (type=='current_temperature') child.setTemperature(payload,false)
     else if (type=='state') child.setThermostatMode(payload,sendCmd)
-        else if (type=='hvac_action') {
-            child.setThermostatOperatingState(payload,sendCmd)
-            log ("Payload for hvac_action was " +payload, "LOG")
-        }
-    else if (type=='temperature') {
-        //child.setThermostatSetpoint(payload)
-        child.setThermostatSetpoint(payload,sendCmd)
-        // need to add devType test for Remote Thermostat
-    }
+    else if (type=='hvac_action') child.setThermostatOperatingState(payload,sendCmd)
+    else if (type=='temperature') child.setThermostatSetpoint(payload,sendCmd)
     else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
-    //child.setLevel(level.toInteger(),1) 
 }
     
 def sensorAction(child,devType,val,attr=null) {
