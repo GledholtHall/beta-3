@@ -1714,7 +1714,7 @@ def registerAll (devList,count,handlerReq='auto') {  //registers handlers for ev
         devList.each { dev ->
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
-                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "KH")
+                //log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "LOG")
 
                 prop=whatProperty(attr.name)
                 normName=normalize(dev.displayName)
@@ -2668,6 +2668,9 @@ private determineLogLevel(data) {
         case "GREEN":
         case "YELLOW":
         case "ORANGE":
+        case "KGREEN":
+        case "KORANGE":
+        case "KYELLOW":
         case "LOG":
         case "KH":
             return 6
@@ -2709,7 +2712,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         log ("Blocking advertising dimmer $name as a switch to HA ","TRACE")
         return
     }
-    if (nameSuffix!=null) log ("NameSuffix at HA advertise was removed: [$nameSuffix]","KH")
+    if (nameSuffix!=null) log ("NameSuffix at HA advertise was removed: [$nameSuffix]","KGREEN")
 	//normName = normalize(name+nameSuffix)
     normName = normalize(name)
 	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","TRACE")
@@ -2899,7 +2902,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
             //else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
 		}
         else {
-            log("Category Was " + category , "KH")
+            //log("Category Was " + category , "LOG")
             return
         }
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pValTemp+pID+pCurrTemp+pSetpoint+pSetpointCmd+pHSetpoint+pHSetpointCmd+pCSetpoint+pCSetpointCmd+pFanMode+pFanCmd+pFanModes+pMode+pModeCmd+pModes+pDev+'}'        
@@ -3129,7 +3132,7 @@ def log(data, type) {
                  if (atomicState.myHub) log.trace "<font color='green'>${data}</font>"
                  break
             case "KYELLOW":
-                 if (atomicState.myHub) log.trace "<font color='green'>${data}</font>"
+                 if (atomicState.myHub) log.trace "<font color='yellow'>${data}</font>"
                  break
             case "KORANGE":
                  if (atomicState.myHub) log.trace "<font color='orange'>${data}</font>"
@@ -3956,7 +3959,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 		HAtype='unknown'
 		UOM=''
         mqtt = getChildDevice("MQTT: Child device driver")
-        log ("NB: $device.displayName attribute_MAP's not yet supported","LOG")
+        log ("NB: $device.displayName attribute_MAP's not yet supported","KGREEN")
     	if (settings?.homiePublish) {  //TODO use case rather than if else if
 		   sTopic="homie/${atomicState.normHubName}/${normName}"
 //        if (!atomicState.suppress){
@@ -5558,11 +5561,11 @@ def HALockFriendlyP(name,label,type) {  // TODO merge with above
 }
     
 def HAClimateFriendlyP(name,label,type) {  // TODO merge with above
+    //log ("Incoming HA friendlyname for $type $name [$label]","LOG")
 	temp = atomicState.HAClimateDevices
 	if (temp==null) temp=[]
-	label=payload
 	if (temp.contains(name)) {
-		//log ("Already in list: $name", "TRACE")
+		log ("Already in list: $name", "TRACE")
 	}
 	else {
 		log ("HA Adding climate to list: $name  label ", "TRACE")
@@ -5627,13 +5630,9 @@ def HAUnknown(name,payload) { //TODO merge with above
 		temp.add(name)
 		atomicState.HAUnknownDevices = temp
 	}
-    log ("HA unsupported device $name", "INFO")
+    log ("HA unsupported device $name  $payload", "LOG")
 	//createChildDevice (name, type, "HA", name)
 }
-
-
-    
-
 
 def wildcardTopics(topics) {  // TODO merge with above
 	temp = atomicState.devTopics
@@ -6335,9 +6334,8 @@ def MD5(String s){
 def createChildDevice(name, type, system, friendlyName=null, dType='default',seq=o) {
     mqtt = getChildDevice("MQTT: Child device driver")
 	// friendlyname may not be available yet so name will have been passed and it will be renamed later in reNameDev()
-	log("CreateDevice called for $system " + name + " " + friendlyName + "  :  " + type,"LOG")
+	log("CreateDevice called for $system " + name + " " + friendlyName + "  :  " + type,"KGREEN")
     if (friendlyName==null) friendlyName=name
-    log ("Friendly Name: $friendlyName","KH")
 	if (name==null) return
 	//if (atomicState.started) return // TODO Stops creation of devices after timed startup has elapsed - but also stops ongoing incremental discovery.... decide which to use
 	devEnabled=false
@@ -6479,7 +6477,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 		return
 	}
     else{
-    log ("["+system+"] Device enabled: $system " + name + " : " + type + " " +dType, "INFO")
+    log ("["+system+"] Device enabled: $system " + name + " : " + type + " " +dType, "TRACE")
     }
 	child=getChildDevice(prefix+name) 
 	if (child != null) 
