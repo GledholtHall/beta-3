@@ -34,26 +34,40 @@
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
 
-		  
+
+- alias: Control lights hs color via MQTT
+  trigger:
+    platform: mqtt     
+    topic: +/light/+/hs_color/cmd
+  action:
+    - service_template: >
+        light.turn_on
+      data_template:
+        hs_color: 
+          - '{{ trigger.payload[0] | int }}'
+          - '{{ trigger.payload[1] | int }}'
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+          
 - alias: Control thermostat setpoint via MQTT
   trigger:
     platform: mqtt
     topic: +/climate/+/temperature/cmd
   action:
     - service_template: >
-        thermostat.set_temperature
+        climate.set_temperature
       data_template:
         temperature: '{{trigger.payload}}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-		  
+          
 - alias: Control thermostat mode via MQTT
   trigger:
     platform: mqtt
     topic: +/climate/+/state/cmd
   action:
     - service_template: >
-        thermostat.set_hvac_mode
+        climate.set_hvac_mode
       data_template:
         hvac_mode: '{{trigger.payload}}'
         entity_id: >-
@@ -62,11 +76,28 @@
 - alias: Control thermostat fanmode via MQTT
   trigger:
     platform: mqtt
-    topic: +/climate/+/fanmode/cmd
+    topic: +/climate/+/fan_mode/cmd
   action:
     - service_template: >
-        fan_mode.set_fan_mode
+        climate.set_fan_mode
       data_template:
-        temperature: '{{trigger.payload}}'
+        fan_mode: '{{trigger.payload}}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+
+- alias: Update Octopus Agile Price
+  description: ''
+  trigger:
+  - hours: '*'
+    minutes: '30'
+    platform: time_pattern
+    seconds: '0'
+  - hours: '*'
+    minutes: '0'
+    platform: time_pattern
+    seconds: '0'
+  condition: []
+  action:
+  - data:
+      entity_id: sensor.electricity_cost
+    service: homeassistant.update_entity
