@@ -1,0 +1,72 @@
+- alias: Control switches via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/switch/+/state/cmd
+  action:
+    - service_template: >
+        homeassistant.turn_{{trigger.payload}}
+      data_template:
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+          
+
+- alias: Control lights state via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/light/+/state/cmd
+  action:
+    - service_template: >
+        homeassistant.turn_{{trigger.payload}}
+      data_template:
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+
+
+- alias: Control lights brightness via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/light/+/brightness/cmd
+  action:
+    - service_template: >
+        homeassistant.turn_on
+      data_template:
+        brightness: '{{trigger.payload}}'
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+
+		  
+- alias: Control thermostat setpoint via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/climate/+/temperature/cmd
+  action:
+    - service_template: >
+        thermostat.set_temperature
+      data_template:
+        temperature: '{{trigger.payload}}'
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+		  
+- alias: Control thermostat mode via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/climate/+/state/cmd
+  action:
+    - service_template: >
+        thermostat.set_hvac_mode
+      data_template:
+        hvac_mode: '{{trigger.payload}}'
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
+		  
+- alias: Control thermostat fanmode via MQTT
+  trigger:
+    platform: mqtt
+    topic: +/climate/+/fanmode/cmd
+  action:
+    - service_template: >
+        fan_mode.set_fan_mode
+      data_template:
+        temperature: '{{trigger.payload}}'
+        entity_id: >-
+          {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
