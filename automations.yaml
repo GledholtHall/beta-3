@@ -48,7 +48,8 @@
           - '{{ trigger.payload[1] | int }}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-          
+	  
+
 - alias: Control thermostat setpoint via MQTT
   trigger:
     platform: mqtt
