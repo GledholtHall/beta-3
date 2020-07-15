@@ -1148,7 +1148,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre2 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre3 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -2731,7 +2731,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre2 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre3 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -2828,7 +2828,9 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pModeCmd = ',"mode_command_topic": "homie/'+"$atomicState.normHubName/$normName" + '/mode/set"'
         //pModes = ',"modes": "homie/'+"$atomicState.normHubName/$normName" + '/$format"'
         //pModes=',"modes": "[“auto”, “off”, “cool”, “heat”]"'
-        
+        pValTemp=''
+        if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+        else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
 
 
        // [“auto”, “off”, “cool”, “heat”, “dry”, “fan_only”]
@@ -2844,9 +2846,9 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pDev
         //pValTemp
         //pID 
-        pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
-        pValTemp=''
-		if (category == "measure-temperature")  { 
+        //pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
+/*
+        if (category == "measure-temperature")  { 
             return
 		    pDevClass = ',"device_class": "temperature"'
 		    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
@@ -2905,6 +2907,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
             //log("Category Was " + category , "LOG")
             return
         }
+*/
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pValTemp+pID+pCurrTemp+pSetpoint+pSetpointCmd+pHSetpoint+pHSetpointCmd+pCSetpoint+pCSetpointCmd+pFanMode+pFanCmd+pFanModes+pMode+pModeCmd+pModes+pDev+'}'        
     } 
 	else if (type=="switch"|type=="light") {
@@ -6023,12 +6026,21 @@ def HAClimateEventP(name,payload,type) {
         log ("Couldn't find climate child called $name" , "WARN")
         return
     }
-    if (child.typeName.startsWith("Remote ")) sendCmd=false else sendCmd=true
-    if (type=='current_temperature') child.setTemperature(payload,false)
-    else if (type=='state') child.setThermostatMode(payload,sendCmd)
-    else if (type=='hvac_action') child.setThermostatOperatingState(payload,sendCmd)
-    else if (type=='temperature') child.setThermostatSetpoint(payload,sendCmd)
-    else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
+    if (child.typeName.startsWith("Remote ")){
+        sendCmd=false // else sendCmd=true
+        if (type=='current_temperature') child.setTemperature(payload,false)
+        else if (type=='state') child.setThermostatMode(payload,sendCmd)
+        else if (type=='hvac_action') child.setThermostatOperatingState(payload,sendCmd)
+        else if (type=='temperature') child.setThermostatSetpoint(payload,sendCmd)
+        else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
+        }
+    else {
+        if (type=='current_temperature') child.setTemperature(payload)
+        else if (type=='state') child.setThermostatMode(payload)
+        else if (type=='hvac_action') child.setThermostatOperatingState(payload)
+        else if (type=='temperature') child.setThermostatSetpoint(payload)
+        else log ("Climate Topic: [$type] with payload [$payload] not implemented yet","WARN")
+            }   
 }
     
 def sensorAction(child,devType,val,attr=null) {
