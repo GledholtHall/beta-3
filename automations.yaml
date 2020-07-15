@@ -48,8 +48,7 @@
           - '{{ trigger.payload[1] | int }}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-	  
-
+          
 - alias: Control thermostat setpoint via MQTT
   trigger:
     platform: mqtt
@@ -73,7 +72,7 @@
         hvac_mode: '{{trigger.payload}}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-		  
+          
 - alias: Control thermostat fanmode via MQTT
   trigger:
     platform: mqtt
@@ -85,7 +84,20 @@
         fan_mode: '{{trigger.payload}}'
         entity_id: >-
           {{ trigger.topic.split('/')[-4] }}.{{ trigger.topic.split('/')[-3] }}
-
-
+          
+- alias: Update Octopus Agile Price
+  description: ''
+  trigger:
+  - hours: '*'
+    minutes: '30'
+    platform: time_pattern
+    seconds: '0'
+  - hours: '*'
+    minutes: '0'
+    platform: time_pattern
+    seconds: '0'
+  condition: []
+  action:
+  - data:
       entity_id: sensor.electricity_cost
     service: homeassistant.update_entity
