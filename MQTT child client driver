@@ -541,7 +541,7 @@ def parse(String description) {
         else if (topic[1]=='climate') {
 			if (topic[3]=='friendly_name') {
                 parent.HAClimateFriendlyP(topic[2],deQuote(payload[0]),topic[1])
-				log ("Device ${topic[2]} is a HA climate device and is called " +payload[0], "TRACE")
+				log ("Device ${topic[2]} is a HA climate device and is called " +payload[0], "KH")
 				//def evt3= createEvent(name: "HAClimateDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
                 return // evt3
 			}
@@ -561,7 +561,7 @@ def parse(String description) {
                 return // evt4
 			}
             else if (topic[3]=='hvac_action'){
-				parent.HAClimateEventP(topic[2],payload[0],topic[3])
+				parent.HAClimateEventP(topic[2],deQuote(payload[0]),topic[3])
                 //def evt4 = createEvent(name: "HAClimateDev", value: topic[2], data: [status: payload[0],update: true, type: topic[1], seq: sequence], isStateChange: true)  //, key2: payload]) // TODO CHECK WRONG - r-eenable
 				log ("Device ${topic[2]} is a HA climate device and is " +payload[0], "TRACE")
                 return // evt4
