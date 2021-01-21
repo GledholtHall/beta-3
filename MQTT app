@@ -4510,7 +4510,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 				category='position'
                 settable="true"
                 dType='shade'
-                HAtype="cover"subscribe to events from
+                HAtype="cover"
                 
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','0:100',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"integer",1,true,atomicState.suppress)
