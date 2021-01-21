@@ -7355,7 +7355,19 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json) { // 'set' com
                          mqtt.publishMsg("homie/${atomicState.normHubName}/${normalize(matchName)}/refresh", 'false', 1, false)
                 }  
         }    
-    }  
+    } else if (cmd == "state") {
+        if (matchDevice != null) {
+            // DUPLICATED TODO combine this as one method for all
+            log("Surmising required state [" + state + "] for " + name, "DEBUG")
+            CloseValues = "close"
+            OpenValues = "open"
+            if (CloseValues.contains(state.toLowerCase())) {
+                matchDevice.close()
+            } else if (OpenValues.contains(state.toLowerCase())) {
+                matchDevice.open()
+            } else log("Unknown state value " + state + " - need to add to lookup", "WARN")
+        }
+    }
    else log("No matching devices with this command available for ${cmd} for $name $state", "WARN")
   }
   else {    // json payload
