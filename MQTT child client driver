@@ -83,7 +83,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3e pre2"
+    version="beta 3e pre6"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -158,7 +158,7 @@ boolean mqttConnect() {
         def mqttInt = interfaces.mqtt
             log ( "MQTT> client ${version} ${state.normHubName}","INFO")     
          try{
-            if (state.clean=='true') log ("Connecting with 'clean' session as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
+            if (state.clean=='true') log ("Connecting with 'clean' session as Hubitat_${state.normHubName} to MQTT broker $state.MQTTBroker", "INFO")
             else if (state.clean=='false') log ("Connecting with 'resurrect' session as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
             mqttInt.connect(state.MQTTBroker, "Hubitat_${state.normHubName}", state.username,state.password,cleanSession: false, lastWillTopic: "Hubitat/${state.normHubName}/LWT", lastWillQos: 0, lastWillMessage: "I died")//give it a chance to start
             pauseExecution(1000)
