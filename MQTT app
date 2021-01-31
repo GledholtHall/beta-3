@@ -1191,7 +1191,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre5 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre6 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -1330,7 +1330,7 @@ def mqttChange(evt) {  // Currently all types of devices (SWITCH DIMMER CONTACT)
 }    
 
 def atomic_StateRemoves() {
-    log  ("Removing unused atomicState variables","WARN")
+    log  ("Removing unused atomicState variables","info")
     atomicState.remove("lastDevice")
     atomicState.remove("lastDev")
     atomicState.remove("properties")
@@ -1699,6 +1699,7 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
  
 def everythingSubscribes(count) {   
     count = registerAll (everything,count)
+    log ("registering everything $settings.everything","KH")
     if (everything != null) log ("Registering $everything" , "LOG")
 }
 
@@ -2281,7 +2282,6 @@ def synchDevices() {
         count=0 
         everyThing.each {
             myName=it.displayName
-            
                 if (it.hasCommand ("refresh")) {
                     normName=normalize(myName)
             	    sTopic="homie/${atomicState.normHubName}/${normName}"
@@ -2300,7 +2300,7 @@ def synchDevices() {
                     return false
                 }
             else if (it.typeName.contains("Thermostat")){
-                devLoopAll (it,"all","thermostatDevices")  // passing all devices here not just sensors BUG
+                devLoopAll (it,"all","thermostatDevices")  
                 return false
             }
             else if (it.typeName.contains("OpenWeatherMap")){
@@ -2573,7 +2573,7 @@ def devLoopAll(dev, attribute, handler, type='none'){  // This registers all att
                     }
                     return
                 }
-                else if (attribute=='all' && handler=="thermostatDevices") { //Only use this for sensors - adds all attributes to device
+                else if (attribute=='all' && handler=="thermostatDevices") { 
                     attrs.each { attr ->
                         thermostatDevices(null, myName, "$attr", dev.currentValue("$attr"),dev,multiple)
                     }
@@ -2791,7 +2791,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         log ("Blocking advertising dimmer $name as a switch to HA ","TRACE")
         return
     }
-    if (nameSuffix!=null) log ("NameSuffix at HA advertise was not removed: $name[$nameSuffix]","KGREEN")
+    //if (nameSuffix!=null) log ("NameSuffix at HA advertise was not removed: $name[$nameSuffix]","KGREEN")
 	normName = normalize(name+nameSuffix)
     //normName = normalize(name)
 	log ("Advertising ${name} device ${type} ${category} to HA with ID $id","TRACE")
@@ -2810,7 +2810,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre5 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre6 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -4063,7 +4063,6 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 		xName=name+nameSuffix
 		log ("thermostatDevices (synch) called with name:${name}    xName: ${xName}    type: ${type} / ${xType}   state: ${state}    multiple: ${multiple}","DEBUG")
 	}
-    
 	    normName = normalize(name)
 		normxName = normalize(xName)
         settable="false"
@@ -4227,16 +4226,17 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
             } 
             
             else if (xType=="hysteresis"){  // not currently handled
+                log ("Unhandled attribute in [$name] >> hysteresis", "WARN")
                 return
             }
             else if (xType=="schedule"){   // not currently handled
-                return
+                log ("Unhandled attribute in [$name] >> schedule", "WARN")
             }
             
 			
             else {
 				category = 'unknown'
-				log ("[t] Unknown category for type #${xType}# reported by device ${name}","INFO")
+				log ("[t] Unknown category for attribute #${xType}# reported by device ${name}","INFO")
                 category = 'unknown_'+normalize(xType)
 			}
 			
