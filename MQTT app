@@ -5576,7 +5576,7 @@ def HALightFriendlyP (name,label,type){
 }
 
 def HASensorTypeP (topic2,payload,topic1) {    //   (topic[2],deQuote(payload[0]),topic[1])
-    HASensorType(topic2,payload,ctopic1)
+    HASensorType(topic2,payload,topic1)
 }
 
 
@@ -5595,7 +5595,7 @@ def HASensorType(topic2,payload,topic1) { //device_type
 		temp.add(topic2)
 		atomicState.HASensorDevices = temp
 	}
-	//createChildDevice (topic2, topic1, "HA", label, sType)
+	createChildDevice (topic2, topic1, "HA", label, sType)  //this creates a sensor device of type device_class
 }
 
 def HASensorFriendlyP (name,label,type) {
@@ -6680,12 +6680,12 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 		else if (dType=="safety") devType= "Virtual Contact Sensor"
         else if (dType=="smoke") devType= "Virtual Smoke Detector"
 		else if (dType=="sound") devType= "Virtual audioVolume"  // check think this is not boolean
-        else if (dType=="temperature") devType= "Virtual Temperature Sensor"  // check think this is not boolean
+        else if (dType=="temperature") devType= "Virtual Temperature Sensor"  // check think this is not boolean           
         else if (dType=="variable") devType= "RM Connector Variable"
         //else if (dType=="vibration") devType= "Virtual Motion Sensor"
         else if (dType=="vibration") devType= "Generic Glass Break Detector"
         else if (dType=="window") devType= "Virtual Contact Sensor"
-		else log (name + " found no device type mapping for " + dType + '  ' +  devType,"WARN")
+        else  log (name + " found no device type mapping for ==$dType== " + dType + '  ' +  devType,"WARN")
 	}
 	// ######  This is where to add additional device types and their matching driver ######			 
 	else {
