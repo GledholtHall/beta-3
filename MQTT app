@@ -1191,7 +1191,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre6 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre7 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -2208,6 +2208,9 @@ def synchDevices() {
     log ("Resynch MQTT device states and HA discovery topics","INFO")
     publishList=[:]
     
+    devLoop (settings?.switches,"switch","switched","onoff")   // moved to here (earlier) before color
+    devLoop (settings?.dimmers,"level","dimmed","dim") 
+    
     
     MQTTRGB = (settings?.colour)  //separate as extra values
         count=0
@@ -2289,7 +2292,7 @@ def synchDevices() {
                     mqtt.publishMsg (sTopic+'/refresh','false',1,true)
                     mqtt.publishMsg (sTopic+'/refresh/$datatype','boolean',1,true)
                     mqtt.publishMsg (sTopic+'/refresh/$settable','true',1,true)
-                    mqtt.publishMsg (sTopic+'/refresh/$name',dev.displayName,1,true)
+                    mqtt.publishMsg (sTopic+'/refresh/$name',it.displayName,1,true)
                     mqtt.publishMsg (sTopic+'/refresh/$retained','true',1,true)
                 }
             
@@ -2319,6 +2322,7 @@ def synchDevices() {
             // $type
             // do an attribute to 
             mqtt.publishMsg (sTopic+'/-device-driver',it.typeName,1,true) 
+            col=false
             it.capabilities.each { cap ->
                 //log (":::$it::: Cap: $cap", "INFO")
                 cap.attributes.each { attrib ->
@@ -2328,10 +2332,19 @@ def synchDevices() {
                         switched(null, myName, attName, it.currentValue(attName),it) //,multiple)
                         switchedDim(null, myName, attName, it.currentValue(attName),it) //,multiple)
                     }
-                    else if ("$cap"=="SwitchLevel")  dimmed(null, myName, attName, it.currentValue(attName),it) //,multiple)
-                    else if ("$cap"=="ColorTemperature")  colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
-                    else if ("$cap"=="ColorControl") colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
-                    else if ("$cap"=="ColorMode")  colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
+                    else if ("$cap"=="SwitchLevel" && !col)  dimmed(null, myName, attName, it.currentValue(attName),it) //,multiple)
+                    else if ("$cap"=="ColorTemperature") {
+                            col=true
+                            colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
+                    }
+                    else if ("$cap"=="ColorControl") {
+                            col = true
+                            colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
+                    }
+                    else if ("$cap"=="ColorMode") {
+                        col=true
+                        colourDevices(null, myName, attName, it.currentValue(attName).toString(),it) //,multiple)
+                    }
                     else if ("$cap"=="buttons") buttons(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
                     else if ("$cap"=="LockCodes") locked(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
                     else if ("$cap"=="Lock") locked(null, myName, attName, it.currentValue(attName),it) //,multiple,dev.id)   //CHECK
@@ -2345,6 +2358,7 @@ def synchDevices() {
                     }
                 }
             }
+            col=false
             
             
 /*
@@ -2422,8 +2436,8 @@ def synchDevices() {
         	}
 		}
 
-    devLoop (settings?.switches,"switch","switched","onoff")    
-    devLoop (settings?.dimmers,"level","dimmed","dim") 
+    //devLoop (settings?.switches,"switch","switched","onoff")   // moved earlier 
+    //devLoop (settings?.dimmers,"level","dimmed","dim") 
     //devLoop (settings?.dimmers,"switch","switchedDim","onoff")
     devLoop (settings?.locks,"lock","locked")
     // others
@@ -2810,7 +2824,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre6 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre7 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3284,6 +3298,7 @@ def subscribeHomieTopic() {
 }
 
 def subscribeVirtuals() {
+    log ("Subscribing to virtuals", "INFO")
             subscribes=[]
             getChildDevices().each { dev ->                 
                 origin=dev.getDataValue("origin")
@@ -3833,6 +3848,11 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
                 //if (cOrigin=="user") {
                 if ((cOrigin=="user") || (cOrigin=="Home Assistant") || (cOrigin=="homie")) { 
                     cTopic=device.getDataValue("level_Cmd")
+                    cScale=device.getDataValue("max_Level").toInteger()
+                    if (cScale>0){
+                        cScale=(cScale * state.toInteger()/100).toInteger()
+                        state=cScale.toString()
+                    }
                     (cTopic,state)=jsonSplit(cTopic,state)
                     if((cTopic!=null) && (cTopic.length()!=0)) {
                         log ("(ccc) Sending command to MQTT $cTopic","KH")
@@ -5021,7 +5041,10 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
                 if (device.displayName!=lastDev) {
                     counter=1
                     addProperty(sTopic,'custom',device)
-                } else counter = counter +1
+                } else {
+                    if (counter==null) counter=0
+                    counter = counter +1
+                }
                 lastDev=device.displayName
                 mqtt.publishMsg (sTopic+'/custom',counter.toString(),1,true)
                 mqtt.publishMsg (sTopic+'/custom/$datatype','integer',1,true)
@@ -5764,7 +5787,7 @@ def wildcardTopics(topics) {  // TODO merge with above
 
 def checkTopicLink(devID) { 
         list2=[]
-        log ("Looking for $devID","DEBUG")
+        log ("Looking for $devID in " + topicLink,"DEBUG")
         if(topicLink.containsKey(devID)){
         list2=topicLink[devID] 
         if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "TRACE")
@@ -5775,7 +5798,7 @@ def checkTopicLink(devID) {
 }
 
 def lookupP (param,message,topic,json) {
-    log (" [lookupP] I got called $param $message $topic $json" ,"DEBUG")
+    log (" [lookupP] I got called $param $message $topic $json" ,"TRACE")
     LookupManual(param,message,topic,json)
     return
 }
@@ -5801,7 +5824,7 @@ def LookupManual (param,message,topic,json) {
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
             jValue="${e.value}"
             jKey="${e.key}"
-            log ("json: ${e.key} : ${e.value}","TRACE")
+            log ("json: ${e.key} : ${e.value}","DEBUG")
             if (value.startsWith('[') && value.endsWith(']')) log ("This has a nested json payload ${value}","DEBUG")
             jsonTopic=deviceID+"{${e.key}:}"
             list=checkTopicLink (jsonTopic)
@@ -6018,6 +6041,13 @@ def deviceAction (child,devType,value,attr=null)  {
     }
     else if (attr=='battery'){
         child.setBattery(value)
+    }
+    else if (attr=='colorTemperature'){
+        col=value.toInteger()
+        if (col<1000) { // is in mireds
+                col = (int) 1000000 / col
+        }
+        child.setColorTemperature(col)
     }
     else if (attr=='speed'){
         child.setSpeed(value)
