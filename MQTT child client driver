@@ -83,7 +83,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3e pre6"
+    version="beta 3e pre8"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -148,6 +148,19 @@ void setHAStatestreamTopic(String HATopic) {
 		state.HAStatestreamTopic = HATopic
 		log ("HAStatestreamTopic is " + HATopic,"INFO")
 }
+void setHAInTopic(String HAInTopic) {
+		state.HAInTopic = HAInTopic
+		log ("HAInTopic is " + HAInTopic,"INFO")
+}
+void setzigbee2mqttTopic(String zigbee2mqttTopic) {
+		state.zigbee2mqttTopic = zigbee2mqttTopic
+		log ("zigbee2mqtt Topic is " + zigbee2mqttTopic,"INFO")
+}
+void setzwave2mqttTopic(String zwave2mqtt) {
+		state.zwave2mqttTopic = zwave2mqtt
+		log ("zwavejs2mqtt Topic is " + zwave2mqtt,"INFO")
+}
+
 void setHomieDevice(String hDev) {
 		state.homieDeviceDiscovery = hDev
 		log ("homie discovery is for device: " + hDev, "INFO")
@@ -366,7 +379,32 @@ def parse(String description) {
 	def payload=payloadFull.split(',')
     //log (topicFull + "   " + payload, "INFO")
     //
+    
     if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
+        
+    //#########################################################################################################################################################################
+    if (topicFull.startsWith(state.HAInTopic+'/')) {
+        parent.HAIn(payloadFull,topic[1],json)
+        return
+        }
+    //#########################################################################################################################################################################
+    //#########################################################################################################################################################################
+    if (topicFull.startsWith(state.zigbee2mqttTopic)) {
+        if (topic[1] == "bridge") parent.zigbee(payloadFull,topic[1],json)
+        //else if parent.onoffEventP (topic[2],payload[0],topic[1])  // not passing update atm as always true ??
+        else parent.inputBooleanEventP(topic[1],payload[3],'binary_sensor',topicFull) // parent.onoffEventP (topic[1],payload[0],"switch")  // not passing update atm as always true ??
+        //else parent.zigbeeDev(payloadFull,topic[1],json)
+        return
+        }
+    //#########################################################################################################################################################################
+    //#########################################################################################################################################################################
+    if (topicFull.startsWith(state.zwave2mqttTopic)) {
+        parent.zwave(payload,topic[1],json)
+        return
+        }
+    //#########################################################################################################################################################################
+    
+    
     if (topicFull.startsWith('homie/'+state.normHubName+'/$implementation/heartbeat')) {
         //log ("Rx: heartbeat [${payload[0]}]   $device.currentWaiting","DEBUG")
         if (device.currentWaiting != "none"){
@@ -387,8 +425,6 @@ def parse(String description) {
             }   
         }
    }
-
-
         
     else if (topicFull.startsWith('homie/'+state.normHubName+'/$fw')){
         rxMsg= "MQTT>RX:[$state.seq2]  [${interfaces.mqtt.parseMessage(description).payload}]  ${interfaces.mqtt.parseMessage(description).topic}"
@@ -431,7 +467,7 @@ def parse(String description) {
                 return //evt10
 				}
                 else if (topic[3]=='device_class'){
-                log ("### [" + payload[0] +"] type for HA Sensor Device ${topic[2]}", "TRACE")
+                log ("### [" + payload[0] + "] type for HA Sensor Device ${topic[2]}", "TRACE")
                 parent.HASensorTypeP(topic[2],deQuote(payload[0]),topic[1])   
 				//def evt11= createEvent(name: "HASensorType", value: topic[2], data: [payload: deQuote(payload[0]), type: topic[1],seq: sequence], isStateChange: true)
                 return //evt11
@@ -889,8 +925,9 @@ def parse(String description) {
         //state.seq2++
         sequence=state.seq2.toString()
         top=interfaces.mqtt.parseMessage(description).topic
-		if (!top.startsWith("SHAC/")) log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
-        log ("ad hoc MQTT parse  $top       ${payload[0]}", "TRACE")
+		//if (!top.startsWith("SHAC/")) log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
+        if (json=="true")  log ("Ad hoc MQTT parse  $top       "+payloadFull, "DEBUG")
+        else log ("ad hoc MQTT parse  $top       ${payload[0]}", "DEBUG")
         parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
        // if (json=="true") sendEvent (name: "Lookup", value: interfaces.mqtt.parseMessage(description).payload, data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
 	   // else sendEvent (name: "Lookup", value: payload[0], data: [topic: interfaces.mqtt.parseMessage(description).topic,seq: sequence,json: json], isStateChange: true)
