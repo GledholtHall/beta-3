@@ -721,6 +721,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
 //=========================================================================================================================================================================================================================================
 
 def discovery() {  // can use atomicState vars in this section
+    devVersion=true
     //dynamicPage(name: "discovery", title: "", install: true, nextPage:"hrefPage", uninstall: false) {
     //dynamicPage(name: "discovery", title: "MQTT Discovery Protocols", install: true, nextPage: "configuration", uninstall: false) {
     dynamicPage(name: "discovery", title: "MQTT Discovery Protocols", nextPage: "configuration") {
@@ -876,40 +877,28 @@ def discovery() {  // can use atomicState vars in this section
         	section {}
         
      //section (zig2mEnabled+"<b>zigbee2mqtt</b>    [${numText}]</font>", hideable: true, hidden: true){
-         section ("<b>zigbee2mqtt</b>    ", hideable: true, hidden: true){
-      /*  if (settings?.Homie_onoff != null) ho = settings?.Homie_onoff.size() else ho=0  // Elvis isnt in the house TODO
-        if (settings?.Homie_dim != null) hd = settings?.Homie_dim.size() else hd=0
-		if (settings?.Homie_sensor != null) hs = settings?.Homie_sensor.size() else hs=0
-		if (settings?.Homie_button != null) hb = settings?.Homie_button.size() else hb=0
-		if (settings?.Homie_variable != null) hv = settings?.Homie_variable.size() else hv=0
-        if (settings?.Homie_lock != null) hl = settings?.Homie_lock.size() else hl=0
-        if (settings?.Homie_unknowns != null) hu = settings?.Homie_unknowns.size() else hu=0
-*/
+   if (devVersion==true) {
+        section ("<b>zigbee2mqtt (UNFINISHED likely to be deprecated)</b>    ", hideable: true, hidden: true){
+
     	input "zigbee2mqttDiscovery", "bool", title: "<b>zigbee2mqtt<b>", required: true, defaultValue: false, submitOnChange: false
         input "zigbee2mqttRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
         input "Runzigbee2mqttDiscovery", "button", title: "Run zigbee2mqtt Discovery now"
 		input name: "zigbee2mqttTopic", type: "text", title: "<b>zigbee2mqtt topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
 		input "zigbee2mqtt_onoff", "enum", multiple: true, title: "<b>Discovered ${atomicState.onoffDevices.size()} zigbee2mqtt switches &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.onoffDevices.sort()
 		input "zigbee2mqtt_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.zigbee2mqttLightDevices.size()} zigbee2mqtt lights &nbsp &nbsp &nbsp [^${hd}]</b>", options: atomicState.zigbee2mqttLightDevices.sort()
-		input "zibeeg2mqtt_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} zigbee2mqtt sensors &nbsp &nbsp &nbsp [^${hs}]</b>", options: atomicState.sensorDevices.sort()
+		input "zigbee2mqtt_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} zigbee2mqtt sensors &nbsp &nbsp &nbsp [^${hs}]</b>", options: atomicState.sensorDevices.sort()
 		input "zigbee2mqtt_button", "enum", multiple: true, title: "<b>Discovered ${atomicState.buttonDevices.size()} zigbee2mqtt buttons &nbsp &nbsp &nbsp [^${hb}]</b>", options: atomicState.buttonDevices.sort()
         input "zigbee2mqtt_variable", "enum", multiple: true, title: "<b>Discovered ${atomicState.varDevices.size()} zigbee2mqtt variables &nbsp &nbsp &nbsp [^${hv}]</b>", options: atomicState.varDevices.sort()
         input "zigbee2mqtt_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.lockDevices.size()} zigbee2mqtt locks &nbsp &nbsp &nbsp [^${hl}]</b>", options: atomicState.lockDevices.sort()
         input "zigbee2mqtt_unknowns", "enum", multiple: true, title: "<b>Discovered ${atomicState.homieUnknownDevices.size()} zigbee2mqtt devices that are not supported yet &nbsp &nbsp &nbsp [^${hu}]</b>", options: atomicState.homieUnknownDevices.sort()   
         }
-       
+   }      
         section {}
         
     //section (zwave2mEnabled+"<b>zwavejs2mqtt</b>    [${numText}]</font>", hideable: true, hidden: true){
-        section ("<b>zwavejs2mqtt</b>    ", hideable: true, hidden: true){
-       /* if (settings?.Homie_onoff != null) ho = settings?.Homie_onoff.size() else ho=0  // Elvis isnt in the house TODO
-        if (settings?.Homie_dim != null) hd = settings?.Homie_dim.size() else hd=0
-		if (settings?.Homie_sensor != null) hs = settings?.Homie_sensor.size() else hs=0
-		if (settings?.Homie_button != null) hb = settings?.Homie_button.size() else hb=0
-		if (settings?.Homie_variable != null) hv = settings?.Homie_variable.size() else hv=0
-        if (settings?.Homie_lock != null) hl = settings?.Homie_lock.size() else hl=0
-        if (settings?.Homie_unknowns != null) hu = settings?.Homie_unknowns.size() else hu=0
-*/
+   if (devVersion==true) {
+        section ("<b>zwavejs2mqtt  (UNFINISHED likely to be deprecated)</b>    ", hideable: true, hidden: true){
+
     	input "zwave2mqttDiscovery", "bool", title: "<b>zwave2mqtt<b>", required: true, defaultValue: false, submitOnChange: false
         input "zwave2mqttRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
         input "Runzwave2mqttDiscovery", "button", title: "Run zwave2mqtt Discovery now"
@@ -921,11 +910,13 @@ def discovery() {  // can use atomicState vars in this section
         input "zwave2mqtt_variable", "enum", multiple: true, title: "<b>Discovered ${atomicState.varDevices.size()} zwave2mqtt variables &nbsp &nbsp &nbsp [^${hv}]</b>", options: atomicState.varDevices.sort()
         input "zwave2mqtt_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.lockDevices.size()} zwave2mqtt locks &nbsp &nbsp &nbsp [^${hl}]</b>", options: atomicState.lockDevices.sort()
         input "zwave2mqtt_unknowns", "enum", multiple: true, title: "<b>Discovered ${atomicState.homieUnknownDevices.size()} zwave2mqtt devices that are not supported yet &nbsp &nbsp &nbsp [^${hu}]</b>", options: atomicState.homieUnknownDevices.sort()   
-        }  
+        } 
+   }
         
         section {}
-        
-        section ("<b>HA Discovery Protocol (Incoming)</b>    ", hideable: true, hidden: true){
+   if (devVersion==true) {       
+        section ("<b>HA Discovery Protocol (Incoming)  UNFINISHED</b>    ", hideable: true, hidden: true){
+            
         input "HAInDiscovery", "bool", title: "<b>HA Incoming Discovery<b>", required: true, defaultValue: false, submitOnChange: false
         input "HAinRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
         input "RunHAInDiscovery", "button", title: "Run HA Incoming Discovery now"
@@ -936,6 +927,7 @@ def discovery() {  // can use atomicState vars in this section
         input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInSensorDevices.sort()
         input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInClimateDevices.sort()
         }
+   }
         
         
         
@@ -3448,6 +3440,7 @@ def subscribeVirtuals() {
             getChildDevices().each { dev ->                 
                 origin=dev.getDataValue("origin")
                 if ((origin == "user")||(origin == "Home Assistant")||(origin == "homie")||(origin=="HA Discovery")) {
+                    if (origin=="Home Assistant") log ("HomeAssistant device " + dev, "KH")
                     myData=dev.getData()
                     if (myData != null) myData.each { dat ->
                         if (dat.value==''||dat.value==' ') {
@@ -3466,6 +3459,7 @@ def subscribeVirtuals() {
                                      log ("Subtopic is JSON " + subTopic + " " + json,"DEBUG")
                             }
                             if (topic.length()>1) {
+                                log ("Adding subscribe to $subTopic","KH")
                                 subscribes.add(subTopic)
                             }
                    /*
@@ -3812,7 +3806,7 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 		xName=evt.name
         // need to determine if MQTT caused this or HE
 
-		log ("Event: From MQTT ? [$device] $lastDev  $name [$state]", "LOG")																  
+		log ("Event: From MQTT ? [$device] $lastDev  $name [$state]", "KH")																  
         if (lastDev== "$name [$state]") {
             lastDev=''
             log("switched Wiping lastdev","LOG")
@@ -5753,6 +5747,7 @@ def HASwitchFriendlyP(name,label,type) {
 		atomicState.HASwitchDevices = temp
 	}
     if ((settings?.HA_Switches != null) && (settings?.HA_Switches.contains (name)))  createChildDevice (name, type, "HA", label)
+    
 }
 
 
@@ -6035,13 +6030,13 @@ def wildcardTopics(topics) {  // TODO merge with above
 
 def checkTopicLink(devID) { 
         list2=[]
-        log ("Looking for $devID in " + topicLink,"LOG")
+        // log ("Looking for $devID in " + topicLink,"LOG")
         if(topicLink.containsKey(devID)){
         list2=topicLink[devID] 
         if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
         else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
     }
-    else log ("topicLink lookup for $devID failed","LOG")
+    // else log ("topicLink lookup for $devID failed","LOG")
     return list2
 }
 
@@ -7005,6 +7000,8 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 			// TODO decide ..this gets fired (but ignored) on every change of state update - can we eliminate that without breaking incremental discovery ?
 			// no but could use ...  if(atomicState.started)
 			if (!atomicState.started && (settings?.mqttRemoveDevices == true)) log ("Child already exists " + prefix+name, "WARN")
+            log ("Need to re-register event listener for HA device but not got type yet.... " + child, "KH") 
+            subscribe(child, "switch", switched)  // this only handles switch events  - need the rest
 			return
 		}
     def nameSpace="hubitat" // now all devices are Hubitat                                        
@@ -7149,6 +7146,10 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                             //child.updateDataValue("${attrData}_ON","on")                                             // ##### ToDo dont do this if already has a value (shouldnt happen as new device)
                             //child.updateDataValue("${attrData}_OFF","off")
                             child.updateDataValue("${attrData}_MAP","[on,off]")
+                            
+                            // SHOULD I TRY AND ADD THE EVENT SUBSCRIBE HERE FOR SWITCHED ?
+                            log ("trying to register 'switched' event listener for " + child, "KH") 
+                            subscribe(child, "switch", switched)
                         }
 					}
                     else if (type == 'light') {
@@ -7163,6 +7164,11 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                             //child.updateDataValue("switch_OFF","off")
                             child.updateDataValue("switch_MAP","[on,off]")
                             child.updateDataValue("max_Level","255")
+                            
+                            log ("Register 'switchedDim' event listener for " + child, "KH") 
+                            subscribe(child, "switch", switchedDim)
+                            log ("Resiter 'dimmed' event listener for " + child, "KH") 
+                            subscribe(child, "level", dimmed)
                         }
 					}
 					else if (type == 'group') {
@@ -7958,7 +7964,7 @@ def HAIn(payload,type,json) {
     UID=data.unique_id
     skipAll=false
     name=data.name
-    if (UID.startsWith("Hubitat-")) {
+    if (UID!=null && UID.startsWith("Hubitat-")) {
         if (skipAll == true) return
         if (data.device.model==atomicState.normHubName) return // always skip HA advertised devices originating from this hub
     }
