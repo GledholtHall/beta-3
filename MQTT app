@@ -1,3 +1,5 @@
+// 27/7/2021 from 192.168.1.43 - pre9
+
 /*
  
   Copyright Kevin Hawkins 2019     apps@ukusa.co.uk
@@ -1285,7 +1287,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre8 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre9 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -2928,7 +2930,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre8 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre9 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3806,7 +3808,6 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 		xName=evt.name
         // need to determine if MQTT caused this or HE
 
-		log ("Event: From MQTT ? [$device] $lastDev  $name [$state]", "KH")																  
         if (lastDev== "$name [$state]") {
             lastDev=''
             log("switched Wiping lastdev","LOG")
@@ -6405,7 +6406,7 @@ def formatP (name,format) {
      
 } 								  
 def dimEventP (name,level,type,max) {
-    log ("Received a dim event from $name level $level is $type", "DEBUG")
+    log ("Received a dim event from $name level $level is $type", "KH")
 	child=getChildDevice("MQTT:homie_"+name)
     if (child==null) child=getChildDevice("MQTT:HA_[" + type+"]_"+name)
     if (child==null) {
@@ -6415,7 +6416,7 @@ def dimEventP (name,level,type,max) {
     //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
     myMax = child.getDataValue("max_Level")   //TODO need to scale here
 	log ("Setting Child dim level to $level", "KH")
-    child.setLevel(level.toInteger(),1) 
+    //child.setLevel(level.toInteger(),1) 
 }
 
 def HASensorEventP(name,payload,type,bool) {
@@ -6621,10 +6622,13 @@ def PresenceEventP(name,status,type) {
 }
 
 def inputBooleanEventP(name,payload,type,topic) {
-    log  ("Received an input boolean type event of $type from $name","DEBUG")
+    log  ("Received an input boolean type event of $type from $name","LOG")
+    name=normalize2(name)
     //log ("inputBoolean: event data: ${data}", "INFO")
 	child=getChildDevice("MQTT:homie_"+name)  //TODO check this method is only for homie devices
     if (child==null) child=getChildDevice("MQTT:HA_["+type+"]_"+name)
+    if (child==null) child=getChildDevice("MQTT:HA_[light]_"+name)
+    log ("Looking for  MQTT:HA_["+type+"]_"+name, "KH")
     if (child==null) child=getChildDevice("MQTT:HADisc_["+type+"]_"+name)
     if (child==null) child=getChildDevice("MQTT:virtual_"+name)  // can this ever match ?
     if (child==null) child=getChildDevice("MQTT:virtual_"+topic)
@@ -6748,6 +6752,12 @@ def normalize(name) {
 	//TODO research how to include NFD
 	//log ("Normalize: " + name + " >>> " + name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_'),"TRACE")
 	return name ? name.trim().toLowerCase().replaceAll(/[^\w-]/,"-").replaceAll(/[_]/,'-') : undefined
+}
+
+def normalize2(name) {
+	//TODO research how to include NFD
+	//log ("Normalize: " + name + " >>> " + name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_'),"TRACE")
+	return name ? name.trim().toLowerCase().replaceAll(/[^\w-]/,"_").replaceAll(/[-]/,'_') : undefined
 }
 
 
