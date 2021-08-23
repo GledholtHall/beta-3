@@ -1,9 +1,11 @@
+//beta 10
+
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
 // 27/7/2021 from 192.168.1.43
 import java.security.MessageDigest
 
 metadata {
-    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/xAPPO/MQTT/beta3/MQTT%20Client%20driver") {
+    definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/GledholtHall/beta-3/master/MQTT%20child%20client%20driver") {
         capability "Initialize"
 		capability "Presence Sensor"
         //capability "Indicator"
@@ -86,7 +88,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3e pre9"
+    version="beta 3e pre10"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -402,7 +404,9 @@ def parse(String description) {
     if (topicFull.startsWith(state.zigbee2mqttTopic)) {
         if (topic[1] == "bridge") parent.zigbee(payloadFull,topic[1],json)
         //else if parent.onoffEventP (topic[2],payload[0],topic[1])  // not passing update atm as always true ??
-        else parent.inputBooleanEventP(topic[1],payload[3],'binary_sensor',topicFull) // parent.onoffEventP (topic[1],payload[0],"switch")  // not passing update atm as always true ??
+        else {  //REVISIT THIS LATER - have temporarily commented out line below
+            // parent.inputBooleanEventP(topic[1],payload[3],'binary_sensor',topicFull) // parent.onoffEventP (topic[1],payload[0],"switch")  // not passing update atm as always true ??
+        }
         //else parent.zigbeeDev(payloadFull,topic[1],json)
         return
         }
