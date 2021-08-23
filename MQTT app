@@ -1,4 +1,4 @@
-// 27/7/2021 from 192.168.1.43 - pre9
+// 23/08/2021 from 192.168.1.43 - pre10
 
 /*
  
@@ -54,7 +54,7 @@ definition(
 	name: "MQTT",
 	namespace: "ukusa",
 	author: "Kevin Hawkins",
-	importUrl: "https://raw.githubusercontent.com/GledholtHall/MQTT/beta3/MQTT%20app",
+	importUrl: "https://raw.githubusercontent.com/GledholtHall/beta-3/master/MQTT%20app",
 	description: "Links MQTT with HE devices",
 	category: "Intranet Connectivity",
 	iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-BigButtonsAndSwitches.png",
@@ -491,6 +491,9 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
 //                                log ("Updating topicLink .. $myVal = $vDev.deviceNetworkId","LOG")                                
                                 //if (temp.containsKey(myVal)){
                                 //    list=temp[myVal]       //.add(topic)
+                                updateTopicLink(myval,vDev.deviceNetworkId)
+                                
+/*                                
                                 if (topicLink.containsKey(myVal)){
                                     list=topicLink[myVal]       //.add(topic)
                                     if (list.contains("$vDev.deviceNetworkId")) {
@@ -506,6 +509,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                     //temp["$myVal"] = list
                                     topicLink["$myVal"]=list
                                 }
+*/
                                 log ("[$i] UPDATED on add to $myVal","KH")  //   ${settings[var]}","KH")
                                 jas=myVal.indexOf("{")
                                 if ((jas>0) && (myVal.endsWith(':}'))){  //strip json
@@ -762,6 +766,8 @@ def discovery() {  // can use atomicState vars in this section
 	atomicState.HAInSensorDevices = (atomicState.HAInSensorDevices != null)?atomicState.HAInSensorDevices:[]
 	atomicState.HAInBinarySensorDevices = (atomicState.HAInBinarySensorDevices != null)?atomicState.HAInBinarySensorDevices:[]
     atomicState.HAInClimateDevices = (atomicState.HAInClimateDevices != null)?atomicState.HAInClimateDevices:[]
+    atomicState.HAInCoverDevices = (atomicState.HAInCoverDevices != null)?atomicState.HAInCoverDevices:[]
+    atomicState.HAInLockDevices = (atomicState.HAInLockDevices != null)?atomicState.HAInLockDevices:[]
     atomicState.zigbee2mqttLightDevices=(atomicState.zigbee2mqttLightDevices != null)?atomicState.zigbee2mqttLightDevices:[]
     
         
@@ -775,7 +781,7 @@ def discovery() {  // can use atomicState vars in this section
         if (atomicState.buttonDevices != null) numhomieDevs+= atomicState.buttonDevices.size()
         if (atomicState.varDevices != null) numhomieDevs+= atomicState.varDevices.size()
         if (atomicState.homieUnknownDevices != null) numhomieDevs+= atomicState.homieUnknownDevices.size()        
-        numHADevs=0  // number of homie devices
+        numHADevs=0  // number of HA devices
 		if (atomicState.HABinarySensorDevices != null) numHADevs+= atomicState.HABinarySensorDevices.size()  // these are all homie devices
 		if (atomicState.HAClimateDevices != null) numHADevs+= atomicState.HAClimateDevices.size()
 		if (atomicState.HACoverDevices != null) numHADevs+= atomicState.HACoverDevices.size()
@@ -916,20 +922,31 @@ def discovery() {  // can use atomicState vars in this section
    }
         
         section {}
-   if (devVersion==true) {       
-        section ("<b>HA Discovery Protocol (Incoming)  UNFINISHED</b>    ", hideable: true, hidden: true){
+       
+        section ("<b>HA Discovery Protocol (Incoming)  INCOMPLETE (light and switch devices only)</b>    ", hideable: true, hidden: true){
+        if (settings?.HAIn_switch != null) HAINsw = settings?.HAIn_switch.size() else HAINsw=0  // Elvis isnt in the house TODO
+        if (settings?.HAIn_light != null) HAINli = settings?.HAIn_light.size() else HAINli=0
+        if (settings?.HAIn_binary != null) HAINbi = settings?.HAIn_binary.size() else HAINbi=0
+        if (settings?.HAIn_sensor != null) HAINse = settings?.HAIn_sensor.size() else HAINse=0
+        if (settings?.HAIn_climate != null) HAINcl = settings?.HAIn_climate.size() else HAINcl=0
+        if (settings?.HAIn_cover != null) HAINco = settings?.HAIn_cover.size() else HAINco=0
+        if (settings?.HAIn_lock != null) HAINlo = settings?.HAIn_lock.size() else HAINlo=0 
+            
+        // alarm_control_panel   camera  device_automation
             
         input "HAInDiscovery", "bool", title: "<b>HA Incoming Discovery<b>", required: true, defaultValue: false, submitOnChange: false
         input "HAinRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
         input "RunHAInDiscovery", "button", title: "Run HA Incoming Discovery now"
 		input name: "HAInTopic", type: "text", title: "<b>Home Assistant Discovery Incoming topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
-		input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA Discovered switches &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInSwitchDevices.sort()
-        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA Discovered lights &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInLightDevices.sort()
-        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA Discovered binary sensors &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
-        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInSensorDevices.sort()
-        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${ho}]</b>", options: atomicState.HAInClimateDevices.sort()
+		input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA Discovered switches &nbsp &nbsp &nbsp [^${HAINsw}]</b>", options: atomicState.HAInSwitchDevices.sort()
+        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA Discovered lights &nbsp &nbsp &nbsp [^${HAINli}]</b>", options: atomicState.HAInLightDevices.sort()
+        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA Discovered binary sensors &nbsp &nbsp &nbsp [^${HAINbi}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
+        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${HAINse}]</b>", options: atomicState.HAInSensorDevices.sort()
+        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${HAINcl}]</b>", options: atomicState.HAInClimateDevices.sort()
+        input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA Discovered cover devices &nbsp &nbsp &nbsp [^${HAINco}]</b>", options: atomicState.HAInCoverDevices.sort()
+        input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA Discovered lock devices &nbsp &nbsp &nbsp [^${HAINlo}]</b>", options: atomicState.HAInLockDevices.sort()
         }
-   }
+
         
         
         
@@ -2129,8 +2146,10 @@ def wipe() {
 	atomicState.HAInLightDevices=[]
 	atomicState.HAInBinarySensorDevices=[]
     atomicState.HAInSensorDevices=[]
-
+    atomicState.HAInCoverDevices=[]
+    atomicState.HAInLockDevices=[]
     atomicState.HAInClimateDevices=[]
+
     atomicState.zigbee2mqttLightDevices=[]
     atomicState.zigbee2mqttSwitchDevices=[]
     atomicState.zigbee2mqttSensorDevices=[]
@@ -2930,7 +2949,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre9 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre10 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3408,7 +3427,6 @@ def subscribeHAInTopic() {
     atomicState.timeStamp=now()
     log ("Starting HA incoming Discovery", "BLUE")
     atomicState.progress = now()
-	log ("Adding HA incoming subscription topics for " + settings?.HAInTopic, "INFO")
 	//mqtt.subscribeTopic(atomicState.haIn+'/switch')
 	mqtt.subscribeTopic(settings?.HAInTopic+'/+/+/config')  //two topic constructs
 	mqtt.subscribeTopic(settings?.HAInTopic+'/+/+/+/config') 
@@ -3479,7 +3497,8 @@ def subscribeVirtuals() {
                                 temp["$topic"] = list
                             }
                       */
-                            
+                            updateTopicLink(topic,dev.deviceNetworkId)
+                      /*
                              if(topicLink.containsKey(topic)){ 
                              list=topicLink[topic]       //.add(topic)
                                 if (list.contains("$dev.deviceNetworkId")) {
@@ -3493,7 +3512,7 @@ def subscribeVirtuals() {
                                 list=["$dev.deviceNetworkId"]
                                 topicLink["$topic"] = list
                             }
-
+                       */
                         }
                      }
                    }
@@ -3580,6 +3599,7 @@ def HADiscovery (evt) {
 
 def HAInDiscovery() {
     runIn(1, "subscribeHAInTopic")
+                                                                // TODO  Unsubscribe from these after a few minutes ???   As some update frequently
     //runIn(1, "subscribeHAInStateTopic")
     //runIn(1, "subscribeHAInNameTopic")
 }
@@ -5928,7 +5948,7 @@ def HAUnknown(name,payload) { //TODO merge with above
 		temp.add(name)
 		atomicState.HAUnknownDevices = temp
 	}
-    log ("HA unsupported device $name  $payload", "LOG")
+    log ("HA unsupported [$type] device $name  $payload", "LOG")
 	//createChildDevice (name, type, "HA", name)
 }
 
@@ -5943,7 +5963,10 @@ def HAInSwitch(name,label,type,config) {
 		temp.add(name)
 		atomicState.HAInSwitchDevices = temp
 	}
-    if ((settings?.HAIn_switch != null) && (settings?.HAIn_switch.contains (name)))  createChildDevice (name, type, "HADisc",label, null, null, config)
+    if ((settings?.HAIn_switch != null) && (settings?.HAIn_switch.contains (name)))  {
+        log ("CREATING from HA Discovery [$type] device $name", "KH")
+        createChildDevice (name, type, "HADisc",label, null, null, config)
+    }
 }
 def HAInSensor(name,label,type,config) {
     temp = atomicState.HAInSensorDevices
@@ -5956,7 +5979,10 @@ def HAInSensor(name,label,type,config) {
 		temp.add(name)
 		atomicState.HAInSensorDevices = temp
 	}
-    if ((settings?.HAIn_sensor != null) && (settings?.HAIn_sensor.contains (name))) createChildDevice (name, type, "HADisc", label, null, null, config)
+    if ((settings?.HAIn_sensor != null) && (settings?.HAIn_sensor.contains (name))){
+        log ("CREATING Discovery [$type] device $name", "KH")
+        createChildDevice (name, type, "HADisc", label, null, null, config)
+    }
 }
 def HAInLight(name,label,type,config) {
     temp = atomicState.HAInLightDevices
@@ -5969,7 +5995,10 @@ def HAInLight(name,label,type,config) {
 		temp.add(name)
 		atomicState.HAInLightDevices = temp
 	}
-    if ((settings?.HAIn_light != null) && (settings?.HAIn_light.contains (name))) createChildDevice (name, type, "HADisc", label, null, null, config)
+    if ((settings?.HAIn_light != null) && (settings?.HAIn_light.contains (name))) {
+        log ("CREATING [$type] Discovery device $name", "KH")
+        createChildDevice (name, type, "HADisc", label, null, null, config)
+    }
 }
 def HAInBinarySensor(name,label,type,config) {
     temp = atomicState.HAInBinarySensorDevices
@@ -5994,6 +6023,32 @@ def HAInClimate(name,label,type,config) {
 		log ("HAIn Adding climate to list: $name label ", "TRACE")
 		temp.add(name)
 		atomicState.HAInClimateDevices = temp
+	}
+    if ((settings?.HAIn_climate != null) && (settings?.HAIn_climate.contains (name))) createChildDevice (name, type, "HADisc", label, null, null, config)
+}
+def HAInCover(name,label,type,config) {
+    temp = atomicState.HAInCoverDevices
+	if (temp==null) temp=[]
+	if (temp.contains(name)) {
+		log ("Already in list: $name", "TRACE")
+	}
+	else {
+		log ("HAIn Adding cover to list: $name label ", "TRACE")
+		temp.add(name)
+		atomicState.HAInCoverDevices = temp
+	}
+    if ((settings?.HAIn_climate != null) && (settings?.HAIn_climate.contains (name))) createChildDevice (name, type, "HADisc", label, null, null, config)
+}
+def HAInLock(name,label,type,config) {
+    temp = atomicState.HAInLockDevices
+	if (temp==null) temp=[]
+	if (temp.contains(name)) {
+		log ("Already in list: $name", "TRACE")
+	}
+	else {
+		log ("HAIn Adding lock to list: $name label ", "TRACE")
+		temp.add(name)
+		atomicState.HAInLockDevices = temp
 	}
     if ((settings?.HAIn_climate != null) && (settings?.HAIn_climate.contains (name))) createChildDevice (name, type, "HADisc", label, null, null, config)
 }
@@ -6034,15 +6089,15 @@ def checkTopicLink(devID) {
         // log ("Looking for $devID in " + topicLink,"LOG")
         if(topicLink.containsKey(devID)){
         list2=topicLink[devID] 
-        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
-        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
+        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "KH")   //LOG
+        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "KH")
     }
-    // else log ("topicLink lookup for $devID failed","LOG")
+    else log ("topicLink lookup for $devID failed","LOG")
     return list2
 }
 
 def lookupP (param,message,topic,json) {
-    log (" [lookupP] I got called $param $message $topic $json" ,"TRACE")
+    log (" [lookupP] I got called $param $message $topic $json" ,"KH")  //trace
     LookupManual(param,message,topic,json)
     return
 }
@@ -6088,29 +6143,20 @@ def LookupManual (param,message,topic,json) {
                }
             }
             if (nested==true) {
-   
-                
                 log ("Checking 2nd level json $jNested1", "KH")
-                log ("Size is $jValue.size()", "KH")
-
-                
-            jsonVal2=parseText(jValue)    
-            for (f in jsonVal2) {
-            // TODO handle single level nested JSON but currently no more
-            // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
-            jValue="${f.value}"
-            jKey="${f.key}"
-            log ("json2: ${f.key} :      ${f.value}","LOG")
-            }
+                log ("Size is $jValue.size()", "KH")   
+                jsonVal2=parseText(jValue)    
+                for (f in jsonVal2) {
+                    // TODO handle single level nested JSON but currently no more
+                    // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
+                    jValue="${f.value}"
+                jKey="${f.key}"
+                log ("json2: ${f.key} :      ${f.value}","LOG")
+                }
 
                 log ("jValue is " + jValue[1] , "KH")
                 log ("jValue is " + jValue.Temperature , "KH")
-                
-                
-                
-                
-                
-                
+
                 jsonTopic=deviceID+"{${e.key}:{Temperature:}}"
                 list=checkTopicLink (jsonTopic)
                 if (list.size>0) {
@@ -6127,9 +6173,9 @@ def LookupManual (param,message,topic,json) {
         //if (list.size>0) log ("FOUND list [$list.size]  $list","LOG")    
     
         if (list.size>0) {
-            found=true
+           found=true
            list.each { DNI -> 
-               //log ("Calling with $DNI","LOG")
+               log ("Calling with $DNI","KH")  //LOG
                LookupAction(DNI,'',value,json,deviceID)
            }
         }
@@ -6219,7 +6265,7 @@ def deviceAction (child,devType,value,attr=null)  {
         }
     }    
     //log ("attr  $attr","KH")
-    //log ("mapList  $mapList","KH")
+    log ("mapList  $mapList","KH")
 
     
     if (attr!=null && mapList!=null && attr=='switch') { // && child.hasCommand('off')) {  //assume it will have 'on' too
@@ -6903,6 +6949,20 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
           if (!devEnabled)  log ("Not enabled homie $name type $type","KH")
 	}
     if (system=="HADisc") {
+             if (config.state_topic != null) {  // need to expand checks here
+                if (config.state_topic.startsWith('homie/')) {
+                    log ("Create Device Blocked: You can't use HA Discovery on a device publishing within the homie/.. tree - use homie discovery instead [$friendlyName]","WARN")
+                    return
+                }
+                 else if (config.state_topic.startsWith(settings?.zwave2mqttTopic)) {
+                    log ("Create Device Blocked: You can't use HA Discovery on a device publishing within the zwave/.. tree - use zwavejs2mqtt discovery instead [$friendlyName]","WARN")
+                    return
+                }
+                else if (config.state_topic.startsWith(settings?.zigbee2mqttTopic)) {
+                    log ("Create Device Blocked: You can't use HA Discovery on a device publishing within the zigbee/.. tree - use zigbee2mqtt discovery instead [$friendlyName]","WARN")
+                    return
+                }
+            }
         prefix="MQTT:HADisc_["+type+"]_"
         if ((type=='switch')&&(settings?.HAIn_switch != null)){							   
 			if (settings?.HAIn_switch.contains (name))
@@ -6929,13 +6989,13 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 				devEnabled=true
 			}
 		}
+ /*
         else if ((type=='input_boolean')&&(settings?.HAIn_InputBooleans != null)) {
 			if (settings?.HAIn_InputBooleans.contains (name))
 			{
                 devEnabled=true
 			}
 		}
-            /*
         else if ((type=='person')&&(settings?.HAIn_Presence != null)) {
 			if (settings?.HAIn_Presence.contains (name))
 			{
@@ -6954,6 +7014,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 				devEnabled=true
 			}
 		}
+*/
         else if ((type=='cover')&&(settings?.HAIn_Covers != null)) {
 			if (settings?.HAIn_Covers.contains (name))
 			{
@@ -6961,21 +7022,20 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                 //devType='Virtual Shade'
 			}
 		}
-*/
+
         else if ((type=='climate')&&(settings?.HAIn_climate != null)) {
 			if (settings?.HAIn_climate.contains (name))
 			{
                 devEnabled=true
 			}
 		}
-/*
         else if ((type=='lock')&&(settings?.HAIn_Locks != null)) {
 			if (settings?.HAIn_Locks.contains (name))
 			{
 				devEnabled=true
 			}
 		}
-*/
+
         else {
             log ("Not enabled HADiscovery $name type $type","KH")
         }
@@ -7250,20 +7310,28 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
     
     
     else if (system=='HADisc') {  //Incoming from HA Discovery protocol
-        
-        log ("===============   Need to add data values here from the config =============================","KH")
-        if (config != null) {
-            deviceClass=config.device_class
-            stateTopic = config.state_topic
-            valueTemplate = config.value_template
-            val = "{occupancy:}"  //need to get to this
+        if (config != null) {  
+            mqtt = getChildDevice("MQTT: Child device driver")
+            friendlyName = config.name  // TODO need to rename device now - or to use this earlier when device is created.
+            log ("Adding HA Discovery [$type] $friendlyName", "GREEN")
+            //deviceClass=config.device_class   // not all devices have this
             child.updateDataValue ("mqtt",'auto')
             child.updateDataValue ("origin",'HA Discovery')
-            child.updateDataValue ("contact_Topic",stateTopic+val)
-            //child.updateDataValue ("contact_Cmd",stateTopic+val)
-            child.updateDataValue ("contact_MAP","[true,false]")
+            if (type=='switch'|type=='light'){
+                child.updateDataValue ("switch_Topic",config.state_topic)
+                child.updateDataValue ("switch_Cmd",config.command_topic)
+                child.updateDataValue ("switch_MAP","[" + config.payload_on + "," + config.payload_off + "]")                
+	            mqtt.subscribeTopic(config.state_topic)
+                updateTopicLink(config.state_topic,child.deviceNetworkId)
+                if (type=='light'){
+                    child.updateDataValue ("level_Topic",config.brightness_state_topic)
+                    child.updateDataValue ("level_Cmd",config.brightness_command_topic)
+                    child.updateDataValue ("max_Level",config.brightness_scale.toString())
+                    mqtt.subscribeTopic(config.brightness_state_topic)
+                    updateTopicLink(config.brightness_state_topic,child.deviceNetworkId) 
+                }
+            }       
         }
-        
     }
                        
                 else if (system=="Shelly"){
@@ -7307,8 +7375,26 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 		}
 */
       //log("Succesfully created new device $name","WARN")
-	  advertiseChild()
+	  if (system != "HADisc") advertiseChild() 
 }
+
+def updateTopicLink (topic, devID){ 
+    log ("Updating TopicLink $topic $devID","KH")
+                             if(topicLink.containsKey(topic)){ 
+                             list=topicLink[topic]       //.add(topic)
+                                if (list.contains(devID)) {
+                                }
+                                else {
+                                    list.add (devID)
+                                    topicLink[topic]=list 
+                                }
+                            }
+                            else {
+                                list=[devID]
+                                topicLink[topic] = list
+                            }
+}
+
 
 def advertiseChild(){
 	return  // These will be 'discovered' devices so not onwardly advertising them or publishing states (may revisit again later)
@@ -7983,7 +8069,11 @@ def HAIn(payload,type,json) {
     else if (type=='binary_sensor') HAInBinarySensor(name,name,type,data)
     else if (type=='climate') HAInClimate(name,name,type,data)
     else if (type=='sensor') HAInSensor(name,name,type,data)
-    else log ("This type [$type] for $name is not supported yet" , "KH")
+    else if (type=='cover') HAInCover(name,name,type,data)
+    else if (type=='lock') HAInLock(name,name,type,data)
+        
+    // alarm_control_panel  camera  device_automation  still to handle
+    else log ("This type [$type] for $name is not supported yet" , "LOG")
 }
 
 def zigbee(payload,name, json) {
