@@ -1,4 +1,4 @@
-// 23/08/2021 from 192.168.1.43 - pre10
+// 23/08/2021 from 192.168.1.43 - pre11
 
 /*
  
@@ -491,7 +491,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
 //                                log ("Updating topicLink .. $myVal = $vDev.deviceNetworkId","LOG")                                
                                 //if (temp.containsKey(myVal)){
                                 //    list=temp[myVal]       //.add(topic)
-                                updateTopicLink(myval,vDev.deviceNetworkId)
+                                updateTopicLink(vDev.displayName, myval,vDev.deviceNetworkId)
                                 
 /*                                
                                 if (topicLink.containsKey(myVal)){
@@ -537,8 +537,9 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
 //===================================
                                //attrList=vDev.getSupportedAttributes()
                                 //if (attrList[i]!=null && attrList[i].dataType =="ENUM") {
-                               if (atomicState.attList[i]=='level') {
+                               if ((atomicState.attList[i]=='level')|(atomicState.attList[i]=='text')|(atomicState.attList[i]=='battery')) {   //   TODO A lot more of these shouldn't have map data
                                log ("Blocking adding _MAP data for $atomicState.attList[i]","KH")
+                                   log ("was to be " + settings[varAtt].trim(),"KH")
                                 }
                                else {
                                    log ("Updated[$i] " + atomicState.attList[i] +"_Map to" + settings[varAtt].trim(),"LOG")
@@ -560,7 +561,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                 }
                             }
 */                          
-                            
+                          if ((atomicState.attList[i]=='battery')|(atomicState.attList[i]=='networkStatus') ) sensor=true
                           if (!sensor) {
                             if ((settings[varCmd]!=null) && (settings[varCmd]!=dataC)) {
                                 // ToDo - be able to send a JSON command
@@ -626,7 +627,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
        //  try {
             
 // BUG TOFIX our i values aren't aligned - we might skip attributes
-           attrList=vDev.getSupportedAttributes() // why do this when we have atomicState.attList[] - these may not align as this misses 'text and 'varaiable' but includes custom attributes and those not within a capability
+           attrList=vDev.getSupportedAttributes() // why do this when we have atomicState.attList[] - these may not align as this misses 'text and 'variaable' but includes custom attributes and those not within a capability
            // attrList is an attribute object  atomicState.AttList is a text list of attributes.
            //log.warn atomicState.attList
            //log.warn attrList
@@ -1811,7 +1812,6 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
  
 def everythingSubscribes(count) {   
     count = registerAll (everything,count)
-    log ("registering everything $settings.everything","KH")
     if (everything != null) log ("Registering $everything" , "LOG")
 }
 
@@ -1868,7 +1868,7 @@ def registerSpecificAttribute (devList, count, attribute, handlerReq='auto'){   
           dev.capabilities.each { cap ->
                   cap.attributes.each { attr ->
                       if ("${attr}" == "${attribute}") {
-                          log ("$dev Specific Att Registration of $cap $attr", "KH")                          
+                          log ("$dev Specific Att Registration of $cap $attr", "GREEN")                          
                           prop=whatProperty(attr.name)
                           normName=normalize(dev.displayName)
                           key = "homie/${atomicState.normHubName}/$normName"
@@ -2097,7 +2097,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
        handler="keypadDevices"
        break
    default:
-       log ("Handling ${device} ${capability} ${attribute} with (default) sensor", "LOG")
+       log ("Handling ${device} ${capability} ${attribute} with (default) sensor", "GREEN")
        handler="sensorDevices"
        break
 
@@ -2452,7 +2452,7 @@ def synchDevices() {
                 //log (":::$it::: Cap: $cap", "INFO")
                 cap.attributes.each { attrib ->
                     attName=attrib.name
-                    log ("Everything: [$myName] Cap: [$cap]  Att: [$attName] [${it.currentValue(attName)}]", "LOG") 
+                    log ("Everything: [$myName] Cap: [$cap]  Att: [$attName] [${it.currentValue(attName)}]", "DEBUG") 
                     if ("$cap"=="Switch" || "$cap"=='Light')  {  // Is this right to call both ?
                         switched(null, myName, attName, it.currentValue(attName),it) //,multiple)
                         switchedDim(null, myName, attName, it.currentValue(attName),it) //,multiple)
@@ -3460,7 +3460,7 @@ def subscribeVirtuals() {
             getChildDevices().each { dev ->                 
                 origin=dev.getDataValue("origin")
                 if ((origin == "user")||(origin == "Home Assistant")||(origin == "homie")||(origin=="HA Discovery")) {
-                    if (origin=="Home Assistant") log ("HomeAssistant device " + dev, "KH")
+                    //if (origin=="Home Assistant") log ("HomeAssistant device " + dev, "KH")
                     myData=dev.getData()
                     if (myData != null) myData.each { dat ->
                         if (dat.value==''||dat.value==' ') {
@@ -3479,7 +3479,7 @@ def subscribeVirtuals() {
                                      log ("Subtopic is JSON " + subTopic + " " + json,"DEBUG")
                             }
                             if (topic.length()>1) {
-                                log ("Adding subscribe to $subTopic","KH")
+                                log ("Adding subscribe to $subTopic","TRACE")
                                 subscribes.add(subTopic)
                             }
                    /*
@@ -3497,7 +3497,7 @@ def subscribeVirtuals() {
                                 temp["$topic"] = list
                             }
                       */
-                            updateTopicLink(topic,dev.deviceNetworkId)
+                            updateTopicLink(dev.displayName,topic,dev.deviceNetworkId)
                       /*
                              if(topicLink.containsKey(topic)){ 
                              list=topicLink[topic]       //.add(topic)
@@ -4266,7 +4266,7 @@ def thermostatDevices(evt, name=null, type=null, state=null, device=null, multip
 		HAtype='unknown'
 		UOM=''
         mqtt = getChildDevice("MQTT: Child device driver")
-        log ("NB: $device.displayName attribute_MAP's not yet supported","KGREEN")
+        log ("NB: $device.displayName attribute_MAP's not yet supported","DEBUG")
     	if (settings?.homiePublish) {  //TODO use case rather than if else if
 		   sTopic="homie/${atomicState.normHubName}/${normName}"
 //        if (!atomicState.suppress){
@@ -4720,7 +4720,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         device=evt.getDevice()
 		state=evt.value
 		xType=evt.name  // attribute name
-        log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()}", "KH")
+        log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()} [$lastDev]", "KH")
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
         log ("lastDev is $lastDev        $name [$state]","TRACE")
@@ -4728,11 +4728,29 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         if (lastDev== "$name [$state]") lastDev=''
         else {
             dType = device.getTypeName()
-            if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
+            log ("dType is $dType","KH")
+            if (dType.startsWith("Virtual")|(dType=="MQTT Text")) // only allow commands to MQTT from virtuals or MQTT text - maybe MQTT Text should be virtual...
             {
                 cMQTT=device.getDataValue("mqtt")
                 if (cMQTT=="enabled") {
-                    if (xType=='contact') {
+                   if (xType=='text') {
+                        cTopic=device.getDataValue("text_Cmd")
+                        if (cTopic=='' || cTopic==' ' || cTopic==null) return
+/*
+                        maps=device.getDataValue("text_MAP")
+                        mapList = stringToList(maps)
+                        (cTopic,state)=jsonSplit(cTopic,evt.value)
+                        if(cTopic!=null) {
+                            if (state=='closing') state= mapList[0] else state = mapList[1]
+                            log ("(cdc) Sending other [door=$state] command to MQTT $cTopic","LOG")
+                            mqtt.publishMsg (cTopic,state,1,false)
+*/
+                        log("Sending text /cmd to mqtt [$cTopic]","LOG")
+                        mqtt.publishMsg (cTopic,state,1,false)
+                   }
+                    
+
+                    else if (xType=='contact') {
                         cTopic=device.getDataValue("contact_Cmd")
                         if (cTopic=='' || cTopic==' ' || cTopic==null) return
                         maps=device.getDataValue("contact_MAP")
@@ -4758,10 +4776,14 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 
                         
                     }
+
+                        
+                    }
                 }
-	        }        
-	    } 
-    }
+	        }
+                
+   } 
+
 	else {
 		xType=type
 		if (multiple) nameSuffix='_'+type else nameSuffix=''
@@ -6089,15 +6111,15 @@ def checkTopicLink(devID) {
         // log ("Looking for $devID in " + topicLink,"LOG")
         if(topicLink.containsKey(devID)){
         list2=topicLink[devID] 
-        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "KH")   //LOG
-        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "KH")
+        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")   
+        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
     }
     else log ("topicLink lookup for $devID failed","LOG")
     return list2
 }
 
 def lookupP (param,message,topic,json) {
-    log (" [lookupP] I got called $param $message $topic $json" ,"KH")  //trace
+    log (" [lookupP] I got called $param $message $topic $json" ,"TRACE")  //trace
     LookupManual(param,message,topic,json)
     return
 }
@@ -6123,10 +6145,10 @@ def LookupManual (param,message,topic,json) {
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
             jValue="${e.value}"
             jKey="${e.key}"
-            log ("json: ${e.key} :      ${e.value}","LOG")
+       log ("json: ${e.key} :      ${e.value}","GREEN")
             nested=false
             if (jValue.startsWith('[') && jValue.endsWith(']')) {
-                log ("This has a nested json payload ${jValue}","LOG")
+       log ("This has a nested json payload ${jValue}","LOG")
                 nested=true
                 jNested1=jValue.toString()
             }
@@ -6134,7 +6156,7 @@ def LookupManual (param,message,topic,json) {
             list=checkTopicLink (jsonTopic)
             if (list.size>0) {
                found=true               
-               log ("FOUND JSON [$list.size]  $list $jsonTopic","KH")
+       log ("FOUND JSON [$list.size]  $list $jsonTopic","LOG")
                  if (jsonTopic.endsWith ('}}')) log ("This is a nested JSON topic " + jsonTopic , "KH")  //FYI 
                list.each { DNI -> 
                    // TODO if nested need to call with nested json keys  // wont happen here as wont have ever matched list.size>0
@@ -6143,28 +6165,28 @@ def LookupManual (param,message,topic,json) {
                }
             }
             if (nested==true) {
-                log ("Checking 2nd level json $jNested1", "KH")
-                log ("Size is $jValue.size()", "KH")   
+         log ("Checking 2nd level json $jNested1", "LOG")
+      // log ("Size is $jValue.size()", "LOG")   
                 jsonVal2=parseText(jValue)    
                 for (f in jsonVal2) {
                     // TODO handle single level nested JSON but currently no more
                     // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
                     jValue="${f.value}"
                 jKey="${f.key}"
-                log ("json2: ${f.key} :      ${f.value}","LOG")
+      // log ("json2: ${f.key} :      ${f.value}","LOG")
                 }
 
-                log ("jValue is " + jValue[1] , "KH")
-                log ("jValue is " + jValue.Temperature , "KH")
+      // log ("jValue is " + jValue[1] , "LOG")
+      // log ("jValue is " + jValue.Temperature , "LOG")
 
                 jsonTopic=deviceID+"{${e.key}:{Temperature:}}"
                 list=checkTopicLink (jsonTopic)
                 if (list.size>0) {
-                    log ("Found $jsonTopic", "KH")
+       log ("Found $jsonTopic", "LOG")
                 }
-                else log ("Couldnt find $jsonTopic", "KH")
+       else log ("Couldnt find $jsonTopic", "LOG")
             }
-            else log ("JSON topic not found $jsonTopic","KH")
+       else log ("JSON topic not found $jsonTopic","LOG")
         }
     }
 
@@ -6175,7 +6197,7 @@ def LookupManual (param,message,topic,json) {
         if (list.size>0) {
            found=true
            list.each { DNI -> 
-               log ("Calling with $DNI","KH")  //LOG
+               // log ("Calling with $DNI","KH")  //LOG
                LookupAction(DNI,'',value,json,deviceID)
            }
         }
@@ -6265,7 +6287,7 @@ def deviceAction (child,devType,value,attr=null)  {
         }
     }    
     //log ("attr  $attr","KH")
-    log ("mapList  $mapList","KH")
+    log ("mapList  $mapList","LOG")
 
     
     if (attr!=null && mapList!=null && attr=='switch') { // && child.hasCommand('off')) {  //assume it will have 'on' too
@@ -6948,7 +6970,9 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         }
           if (!devEnabled)  log ("Not enabled homie $name type $type","KH")
 	}
-    if (system=="HADisc") {
+
+if (system=="HADisc") {
+/*  temporarily remove blocking here
              if (config.state_topic != null) {  // need to expand checks here
                 if (config.state_topic.startsWith('homie/')) {
                     log ("Create Device Blocked: You can't use HA Discovery on a device publishing within the homie/.. tree - use homie discovery instead [$friendlyName]","WARN")
@@ -6963,6 +6987,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                     return
                 }
             }
+*/
         prefix="MQTT:HADisc_["+type+"]_"
         if ((type=='switch')&&(settings?.HAIn_switch != null)){							   
 			if (settings?.HAIn_switch.contains (name))
@@ -7111,8 +7136,13 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
     else if (type=='sensor' || type=='binary_sensor') {
         log ("Got a sensor of type ${dType}", "WARN")
         // devType= "Virtual Omni Sensor" // changing this default to a variable as Omni is problematic
-        devType= "RM Connector Variable" 
+        devType= "RM Connector Variable"
         if (dType=="default") devType= "RM Connector Variable"  // changing this default to a variable as Omni is problematic
+        if (system=='HADisc') {  
+            devType="MQTT Text"   // use my driver for teh HA In Discovered sensors for the time being
+            nameSpace='ukusa'
+            attrData='multiple'
+        }
         else if (dType=="None") devType= "Virtual Contact Sensor"
         else if (dType=="acceleration") devType= "Virtual Acceleration Sensor"
         else if (dType=="audioVol") devType= "Virtual audioVolume"
@@ -7322,15 +7352,25 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                 child.updateDataValue ("switch_Cmd",config.command_topic)
                 child.updateDataValue ("switch_MAP","[" + config.payload_on + "," + config.payload_off + "]")                
 	            mqtt.subscribeTopic(config.state_topic)
-                updateTopicLink(config.state_topic,child.deviceNetworkId)
+                updateTopicLink(child.displayName,config.state_topic,child.deviceNetworkId)
                 if (type=='light'){
                     child.updateDataValue ("level_Topic",config.brightness_state_topic)
                     child.updateDataValue ("level_Cmd",config.brightness_command_topic)
                     child.updateDataValue ("max_Level",config.brightness_scale.toString())
                     mqtt.subscribeTopic(config.brightness_state_topic)
-                    updateTopicLink(config.brightness_state_topic,child.deviceNetworkId) 
+                    updateTopicLink(child.displayName,config.brightness_state_topic,child.deviceNetworkId) 
                 }
-            }       
+            }
+            if (type=='sensor') {  // defaulted to the MQTT Text device for the time being
+               child.updateDataValue ("text_Topic",config.state_topic)
+               mqtt.subscribeTopic(config.state_topic)
+               updateTopicLink(child.displayName,config.state_topic,child.deviceNetworkId)
+               uom=config.unit_of_measurement  // need to protect against this not being provided in config
+                    // still need to handle battery - not sure if can use both attributes on the MQTT Text device as selected as two devices
+                child.setSuffix(uom)
+    
+                
+            }
         }
     }
                        
@@ -7378,10 +7418,10 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 	  if (system != "HADisc") advertiseChild() 
 }
 
-def updateTopicLink (topic, devID){ 
-    log ("Updating TopicLink $topic $devID","KH")
+def updateTopicLink (name, topic, devID){ 
+
                              if(topicLink.containsKey(topic)){ 
-                             list=topicLink[topic]       //.add(topic)
+                                 list=topicLink[topic]       //.add(topic)
                                 if (list.contains(devID)) {
                                 }
                                 else {
@@ -7393,6 +7433,13 @@ def updateTopicLink (topic, devID){
                                 list=[devID]
                                 topicLink[topic] = list
                             }
+    
+/*
+    log ("Updating [$name $topic $devID","KH")
+    log ("Topic entry is $list", "KH")
+    log ("Topic Link  is $topicLink", "KH")
+    log ("  ","KH")
+*/
 }
 
 
