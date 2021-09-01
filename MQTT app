@@ -1,4 +1,4 @@
-// 26/08/2021 from 192.168.1.43 - pre12
+// 31/08/2021 from 192.168.1.43 - pre13
 
 /*
  
@@ -193,7 +193,7 @@ def vMQTT() {
          // Removing virtual Button as inpractical to implement=atomicstate
           
         //atomicState.vList=["RM Connector Variable", "MQTT Text", "Virtual audioVolume", "Virtual Button","Virtual CO Detector", "Virtual Color Temperature Light", "Virtual Contact Sensor", "Virtual Dimmer", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
-        atomicState.vList=["RM Connector Variable", "MQTT Text", "Virtual audioVolume","Virtual CO Detector", "Virt=atomicstateual Color Temperature Light", "Virtual Contact Sensor", "Virtual Dimmer", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
+        atomicState.vList=["RM Connector Variable", "MQTT Text", "Virtual audioVolume","Virtual CO Detector", "Virtual Color Temperature Light", "Virtual Contact Sensor", "Virtual Dimmer", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
 //atomicState.attList=[:]
         //def attmap = ['acceleration':'active|inactive','contact':'open|closed', 'water':"wet|dry"]
         section {
@@ -221,7 +221,7 @@ def vMQTT() {
                           // Maybe no harm to update data anyway ??
                       }
                           
-                      log("$k changed from " + dynVars[k] + " to $v","KH")
+                    log("$k changed from " + dynVars[k] + " to $v","KH")
                       udDNI=''
                       index1=k.indexOf('_',9)
                       //log ("Index1 is $index1","LOG")
@@ -242,10 +242,15 @@ def vMQTT() {
                                           log ("udDevice: $udDev.displayName","LOG")
                                           aTopic=k.substring(index3+1)
                                           if ((aTopic!=null)&&(aTopic!='')){
-                                              
-                                              log ("AttributeData: $aTopic","LOG")
-                                              log ("[$udDev.displayName] Updated Data $aTopic to $v","KH")
-                                              udDev.updateDataValue("$aTopic", "$v")
+                                               if (v=='~~delete~~') {
+                                                   udDev.removeDataValue ("$aTopic")
+                                                   log ("Deleted data $aTopic","WARN")
+                                               }
+                                               else {
+                                                  log ("AttributeData: $aTopic","LOG")
+                                                  log ("[$udDev.displayName] Updated Data $aTopic to [$v]","KH")
+                                                  udDev.updateDataValue("$aTopic", "$v")
+                                              }
                                           }
                                       }
                                   }
@@ -253,14 +258,12 @@ def vMQTT() {
                               else {
                                   udDNI=k.substring(index1+1)
                                   log ("udDNI: $udDNI","LOG")
-                                  log ("Attribute data is missing from this device", "WARN")
+                                  log ("Attribute data is missing from this device", "LOG")
                               }
                           }
                       }
-
-
-                  }
                   dynVars[k]=v  // recreates the current
+                }
               }
             }
           //log ("dynVars is $dynVars","LOG")
@@ -329,7 +332,6 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
         if (capability) {
             def String varCap = "var_" + "${capability}".replaceAll("\\s","")
             sensor=false
-            
             settings[varCap].each { virtDev ->
                 if (virtDev !=null) virtDev.updateDataValue("mqtt", "enabled") // remove ?? not useful as we don't ever disable them ...
                 dOrigin = (virtDev.getDataValue("origin"))
@@ -411,6 +413,7 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
                         
                         //log ("Device is $vDev.displayName","INFO")
                         //log ("Origin is $dOrigin","INFO")
+                        atomicState.device=vDev
                         if (dOrigin=="user" && (enabled)) input "oldVDev", "button", title: "Delete device $vDev", textColor: "red"
                     }                   
                 }// end section
@@ -557,10 +560,6 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                                                                      
          // disabled vDev.updateDataValue("${atomicState.attList[i]}_Topic", settings[var].trim())
                                 myVal=settings[var].trim()  // this is not the latest value :-(
-                                log ("One","LOG")
-                                atomicState.dataName = "${atomicState.attList[i]}_Topic"
-                                atomicState.dni = vDev.deviceNetworkId
-                                
 // #############################  TODO need to strip JSON 
                                 
                                 
@@ -598,15 +597,6 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                             }
                             //log ("varAtt is $varAtt ${settings[varAtt]} $dataAtt", "KH")
                             if ((settings[varAtt]!=null) && (settings[varAtt]!=dataAtt)) {
-/*                      
-                                log ("      ","KH")
-                                log ("[$i] UPDATE device $vDev.displayName - ${atomicState.attList[i]}_MAP","KH")
-                                log ("[$i] UPDATING - from " + vDev.getDataValue("${atomicState.attList[i]}_MAP"),"KH")
-
-                                log ("[$i] UPDATED to ${settings[varAtt]}","KH")
-                                log ("[$i] CHECK " + vDev.getDataValue("${atomicState.attList[i]}_MAP"),"KH")
-                                log ("  ","KH")
-*/
 
 //TODO THIS IS A TEMPORARY FIX / HACK
 //===================================
@@ -619,10 +609,6 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                else {
                                    log ("Updated[$i] " + atomicState.attList[i] +"_Map to" + settings[varAtt].trim(),"LOG")
           // disabled vDev.updateDataValue("${atomicState.attList[i]}_MAP", settings[varAtt].trim())
-                                   log ("Two","LOG")
-                                   atomicState.varX = varAtt
-                                   atomicState.dataName = "${atomicState.attList[i]}_MAP"
-                                   atomicState.dni = vDev.deviceNetworkId
                                }
                             }
 /*
@@ -646,11 +632,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                 log ("[$i] UPDATE device $vDev.displayName - ${atomicState.attList[i]}_Cmd","KH")
                                 log ("[$i] UPDATING - from " + vDev.getDataValue("${atomicState.attList[i]}_Cmd"),"KH")
      // disabled vDev.updateDataValue("${atomicState.attList[i]}_Cmd", settings[varCmd].trim())
-                                log ("Three","LOG")
-                                atomicState.varX = varCmd
-                                atomicState.dataName = "${atomicState.attList[i]}_Cmd"
-                                atomicState.dni = vDev.deviceNetworkId
-                                log ("DNI: $atomicState.dni","KH")
+
                                 //myVal=settings[varCmd].trim()
                                 //log ("myVal cmd $myVal  vDev  $vDev.deviceNetworkId","DEBUG")
                                 //temp[myVal] = vDev.deviceNetworkId  //  Don't get incoming messages on Cmd topics
@@ -724,7 +706,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
            // attrList is an attribute object  atomicState.AttList is a text list of attributes.
 log (atomicState.attList,"LOG")   //  << much bigger list - complete
 log (attrList,"LOG")
-log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "WARN")
+log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "TRACE")
 
            if (attrList[i]!=null && attrList[i].dataType =="ENUM") {   
                
@@ -753,10 +735,6 @@ log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "WARN"
                             //log ("2a Updating old ${atomicState.attList[i]}_MAP with ${settings[varAtt]} on $vDev.displayName","KH")
                             //if (settings[varAtt] != null) vDev.updateDataValue("${atomicState.attList[i]}_MAP", settings[varAtt])// $settings?.stateOFF)
     // disabledif (settings[varAtt] != null) vDev.updateDataValue("${attrList[i]}_MAP", settings[varAtt])// $settings?.stateOFF)
-                            log ("Four","LOG")
-                                atomicState.varX = varAtt
-                                atomicState.dataName = "${attrList[i]}_MAP"
-                                atomicState.dni = vDev.deviceNetworkId
                             //log.debug "2b Updating old ${atomicState.attList[i]}_JSON with ${settings[varJSON]} on $vDev.displayName"
                             //if ((settings[varJSON] != null)&&(settings[varJSON] != ' ')) vDev.updateDataValue("${atomicState.attList[i]}_JSON", settings[varJSON])// $settings?.stateOFF)
                         }
@@ -768,10 +746,6 @@ log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "WARN"
                 atts=atts.replace(', ', ',')
       // disabled vDev.updateDataValue("${attrList[i]}_MAP", atts.trim())
                 log ("Updating with #$atts#  #${atts.trim()}#","WARN")
-                log ("Five","LOG")
-                                atomicState.varX = varAtt
-                                atomicState.dataName = "${attrList[i]}_MAP"
-                                atomicState.dni = vDev.deviceNetworkId
             }
            } //not ENUM
 /*
@@ -811,10 +785,6 @@ log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "WARN"
                         else input(name: "maxLev", type: "enum",defaultValue: currentMax, title: "Please enter the maximum possible level:" , required: false, submitOnChange: true,multiple: false, options: atomicState.devTopics.sort())
                         //if (!newDev)  vDev.updateDataValue("max_Level", "$Topic6")
       // disabled if (!newDev)  vDev.updateDataValue("max_Level", settings?.maxLev)
-                        log ("Six","LOG")
-                                atomicState.varX = 'maxLevel'
-                                atomicState.dataName = settings?.maxLevel
-                                atomicState.dni = vDev.deviceNetworkId
                     }
                 }
             }
@@ -1087,7 +1057,7 @@ def appButtonHandler(btn) {
         atomicState.Mappings=[:]
     }
     else if (btn=="oldVDev") {
-        deleteChildDevice(vDev.deviceNetworkId)
+        deleteChildDevice(atomicState.device.deviceNetworkId)
         log ("Deleted virtual device $vDev","WARN")
     }
     else if (btn=="editVDev") {
@@ -1512,7 +1482,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre12 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre13 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -1899,10 +1869,10 @@ def deviceEventSubscribes() {   // This raises subscriptions for all enabled dev
     subscribe(var_VirtualLock,"lock",locked)  //check
     subscribe(var_VirtualFanController, "speed", otherDevices)  //check
 
-/*
-    subscribe(var_RM Connector Variable,what,what)
-    subscribe(var_MQTT Text,what,what)
-    subscribe(var_Virtual audioVolume,what,what)
+    //subscribe(var_RM Connector Variable,what,what)
+    subscribe(var_MQTTText,"text",otherDevices)
+    
+/*  subscribe(var_Virtual audioVolume,what,what)
     subscribe(var_Virtual Button,what,what)
     subscribe(var_Virtual CO Detector,what,what)
     subscribe(var_Virtual Contact Sensor,what,what)
@@ -2239,6 +2209,9 @@ def whatProperty(attr) {
         case "windowShade":
             property='state'
             break
+        case "networkstatus":
+            property='state'
+            break
         default:
             log ("Unknown property value $attr","WARN")
             //property=attr.toLowerCase()
@@ -2304,7 +2277,7 @@ def lookupHandler(device,capability,attribute,handlerReq='auto')
        handler="keypadDevices"
        break
    default:
-       log ("Handling ${device} ${capability} ${attribute} with (default) sensor", "GREEN")
+       log ("Handling ${device} ${capability} ${attribute} with (default) sensor", "LOG")
        handler="sensorDevices"
        break
 
@@ -3686,7 +3659,7 @@ def subscribeVirtuals() {
                                      log ("Subtopic is JSON " + subTopic + " " + json,"DEBUG")
                             }
                             if (topic.length()>1) {
-                                log ("Adding subscribe to $subTopic","TRACE")
+                                log ("Adding [$dev.name]subscribe to $subTopic","LOG")
                                 subscribes.add(subTopic)
                             }
                    /*
@@ -4916,10 +4889,29 @@ def locationEvent(evt,name=null,type=null,state=null,device=null,multiple=false)
     sTopic=	"homie/${atomicState.normHubName}/hub/hsm/$evt.name"
 	mqtt.publishMsg (sTopic,evt.value,1,true)
 }
+
+// otherDevices handles this currently
+def mqttText (evt,name=null,type=null,state=null,device=null,multiple=false) {
+    
+    log ("MQTT Text called","KH")
+    mqtt = getChildDevice("MQTT: Child device driver")
+    if (evt!=null)
+	{
+		name=evt.displayName
+        device=evt.getDevice()
+		state=evt.value
+		xType=evt.name  // attribute name
+        log ("MQTT Texts got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()} [$lastDev]", "KH")
+		xName=evt.name
+		//log ("Device other ${state}  ${name}", "DEBUG")
+        //log ("lastDev is $lastDev        $name [$state]","TRACE")
+        //if (state=='close') state='closed'  // treat them the same
+    }
+    
+}
+
        
 def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=false) {  // subs must be used in HA discovery as device must be separated into multiple entities 
-	
-    
     mqtt = getChildDevice("MQTT: Child device driver")
     if (evt!=null)
 	{
@@ -4930,9 +4922,12 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()} [$lastDev]", "KH")
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
-        log ("lastDev is $lastDev        $name [$state]","TRACE")
+        log ("lastDev is $lastDev        $name [$state]","KH")
         //if (state=='close') state='closed'  // treat them the same
-        if (lastDev== "$name [$state]") lastDev=''
+        if (lastDev== "$name [$state]") {
+            lastDev=''
+            log (" Block this cmd update","KH")
+        }
         else {
             dType = device.getTypeName()
             log ("dType is $dType","KH")
@@ -6404,7 +6399,7 @@ def LookupManual (param,message,topic,json) {
         if (list.size>0) {
            found=true
            list.each { DNI -> 
-               // log ("Calling with $DNI","KH")  //LOG
+                log ("Calling LookupAction with $DNI","LOG")  //LOG
                LookupAction(DNI,'',value,json,deviceID)
            }
         }
@@ -6416,7 +6411,7 @@ def LookupManual (param,message,topic,json) {
 }
 
 def LookupAction(LookupID,jKey,jValue,json,deviceID) {
-    //log ("LookupAction $jKey [$jValue] $json  $deviceID","KH")
+    log ("LookupAction $jKey [$jValue] $json  $deviceID","KH")
         if (LookupID != null) {	
         device=getChildDevice(LookupID.toString())
         if (device) {
@@ -6479,6 +6474,7 @@ def unblockEvents(){
 
     
 def deviceAction (child,devType,value,attr=null)  {
+    lastDev="$child [$value]" // default if not changed below
     //isEnum=false   / can reinstate if choices get larger and has a speed advantage
     maps=child.getDataValue("$attr" + "_MAP")
     if ((maps != null)&&(maps!=' ')&&(maps!='')) {
