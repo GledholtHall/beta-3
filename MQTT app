@@ -243,12 +243,14 @@ def vMQTT() {
                                           log ("udDevice: $udDev.displayName","LOG")
                                           aTopic=k.substring(index3+1)
                                           if ((aTopic!=null)&&(aTopic!='')){
+                                              if (aTopic=="text_MAP") return  // block a text_MAP being created
                                                if (v=='~~delete~~') {
                                                    udDev.removeDataValue ("$aTopic")
                                                    log ("Deleted data $aTopic","WARN")
                                                }
                                                else {
                                                   log ("AttributeData: $aTopic","LOG")
+                                                  
                                                   log ("[$udDev.displayName] Updated Data $aTopic to [$v]","KH")
                                                   udDev.updateDataValue("$aTopic", "$v")
                                                    if ((mqtt!=null)&&(aTopic.endsWith("_Topic"))){
