@@ -1,4 +1,4 @@
-// 31/08/2021 from 192.168.1.43 - pre13
+// 02/09/2021 from 192.168.1.43 - pre14
 
 /*
  
@@ -203,6 +203,7 @@ def vMQTT() {
         }  
         //atomicState.attList=[]
         attList=[]
+        mqtt = getChildDevice("MQTT: Child device driver")
         log ("Device is $atomicState.dni", "LOG")
         //if (_vAr_Cmd2) log ("VarCmd changed","KH")
         //udDev=getChildDevice (atomicState.dni)
@@ -250,6 +251,12 @@ def vMQTT() {
                                                   log ("AttributeData: $aTopic","LOG")
                                                   log ("[$udDev.displayName] Updated Data $aTopic to [$v]","KH")
                                                   udDev.updateDataValue("$aTopic", "$v")
+                                                   if ((mqtt!=null)&&(aTopic.endsWith("_Topic"))){
+                                                       mqtt.subscribeTopic ("$v")
+                                                       // need to add to topiclink too
+                                                       updateTopicLink (udDev.displayName,v, udDNI)
+                                                       
+                                                   }
                                               }
                                           }
                                       }
@@ -591,7 +598,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                                             //log ("Strip JSON value $defOne for subscribe" , "KH")
                                             myVal=myVal.substring(0, jas)   
                                 }
-                                mqtt = getChildDevice("MQTT: Child device driver")
+
                                 if (mqtt!=null) mqtt.subscribeTopic ("$myVal") // // ("${settings[var]}")  
                                                              
                             }
@@ -1482,7 +1489,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,atomicState.suppress)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip','1.2.3.4',1,true,atomicState.suppress)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre13 beta 3e',1,true,atomicState.suppress)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$implementation/version','pre14 beta 3e',1,true,atomicState.suppress)
         if (modes) currentMode()
         if (hsm) currentHSB()
         sunTimes()
@@ -1649,13 +1656,16 @@ def abort (where) {
 }
 
 def addProperty(key,value,device=null) {
-    att=value
+    att=value  
+
+    
     mqtt = getChildDevice("MQTT: Child device driver")
     if (properties[key] == null) {
         if (att=='ramp') log ("key was null for $device[$value]","KH")
         properties[key] = value
         if (device!=null)   device.updateDataValue("properties", value)
-        mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)
+        if (device.getDataValue("origin")=='user') return
+        else mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)
     }
     else {
         if (properties[key].contains (value)){
@@ -2062,12 +2072,13 @@ return (count)
 }
 
 def registerAll (devList,count,handlerReq='auto') {  //registers handlers for every capability and attribute a device has
-    //  a variable attribute will not get registered as it has no matching capability !
+    //  a variable or text (MQTT Text) attribute will not get registered as it has no matching capability !
         changes=true
         devList.each { dev ->
+          if (dev.typeName == "MQTT Text") subscribe(dev,"text",otherDevices)
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
-                //log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "LOG")
+                log ("$dev (all) subscribing to " + cap.name + "  " + attr.name + "  " + handlerReq, "DEBUG")
 
                 prop=whatProperty(attr.name)
                 normName=normalize(dev.displayName)
@@ -3129,7 +3140,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre10 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre14 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3659,7 +3670,7 @@ def subscribeVirtuals() {
                                      log ("Subtopic is JSON " + subTopic + " " + json,"DEBUG")
                             }
                             if (topic.length()>1) {
-                                log ("Adding [$dev.name]subscribe to $subTopic","LOG")
+                                log ("Adding [$dev.name]subscribe to $subTopic","DEBUG")
                                 subscribes.add(subTopic)
                             }
                    /*
@@ -4922,7 +4933,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()} [$lastDev]", "KH")
 		xName=evt.name
 		log ("Device other ${state}  ${name}", "DEBUG")
-        log ("lastDev is $lastDev        $name [$state]","KH")
+        log ("lastDev is $lastDev        $name [$state]","DEBUG")
         //if (state=='close') state='closed'  // treat them the same
         if (lastDev== "$name [$state]") {
             lastDev=''
@@ -4930,7 +4941,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
         }
         else {
             dType = device.getTypeName()
-            log ("dType is $dType","KH")
+            log ("dType is $dType","TRACE")
             if (dType.startsWith("Virtual")|(dType=="MQTT Text")) // only allow commands to MQTT from virtuals or MQTT text - maybe MQTT Text should be virtual...
             {
                 cMQTT=device.getDataValue("mqtt")
@@ -6313,8 +6324,8 @@ def checkTopicLink(devID) {
         // log ("Looking for $devID in " + topicLink,"LOG")
         if(topicLink.containsKey(devID)){
         list2=topicLink[devID] 
-        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")   
-        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "LOG")
+        if (list2.size==1) log ("[$devID] Got $list2.size device topicLink matches [$list2]", "DEBUG")   
+        else log ("[$devID] Got $list2.size device topicLink matches [$list2]", "DEBUG")
     }
     else log ("topicLink lookup for $devID failed","LOG")
     return list2
@@ -6399,7 +6410,7 @@ def LookupManual (param,message,topic,json) {
         if (list.size>0) {
            found=true
            list.each { DNI -> 
-                log ("Calling LookupAction with $DNI","LOG")  //LOG
+            // log ("Calling LookupAction with $DNI","TRACE")
                LookupAction(DNI,'',value,json,deviceID)
            }
         }
@@ -6411,7 +6422,7 @@ def LookupManual (param,message,topic,json) {
 }
 
 def LookupAction(LookupID,jKey,jValue,json,deviceID) {
-    log ("LookupAction $jKey [$jValue] $json  $deviceID","KH")
+    log ("LookupAction $jKey [$jValue] $json  $deviceID","TRACE")
         if (LookupID != null) {	
         device=getChildDevice(LookupID.toString())
         if (device) {
@@ -6485,12 +6496,11 @@ def deviceAction (child,devType,value,attr=null)  {
         maps=maps.substring(1, endPos)
         mapList = maps.split(',')
         if (mapList==null) {
-            log ("MapList was null for $child  $attr","INFO")
+            log ("MapList was null for $child  $attr","TRACE")
             return
         }
     }    
-    //log ("attr  $attr","KH")
-    log ("mapList  $mapList","LOG")
+    log ("mapList  $mapList","TRACE")
 
     
     if (attr!=null && mapList!=null && attr=='switch') { // && child.hasCommand('off')) {  //assume it will have 'on' too
