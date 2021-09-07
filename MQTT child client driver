@@ -392,7 +392,10 @@ def parse(String description) {
         
     //#########################################################################################################################################################################
     if (topicFull.startsWith(state.HAInTopic+'/')) {
-        parent.HAIn(payloadFull,topic[1],json)
+        if (payloadFull==null) log ("Payload was null for $topicFull","ERROR")
+        if (payloadFull==null) log ("Payload was $payLoadFull for $topicFull","ERROR")
+        
+        else parent.HAIn(payloadFull,topic[1],json)
         return
         }
     //#########################################################################################################################################################################
