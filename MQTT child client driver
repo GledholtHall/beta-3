@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 23/8/2021 from 192.168.1.43  pre11
+// 8/9/2021 from 192.168.1.43  pre15
 import java.security.MessageDigest
 
 metadata {
@@ -85,7 +85,7 @@ def initialize() {
     if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3e pre11"
+    version="beta 3e pre15"
     
 
 //    sendEvent (name: "Status", value: "disconnected" , isStateChange: true)
@@ -392,10 +392,7 @@ def parse(String description) {
         
     //#########################################################################################################################################################################
     if (topicFull.startsWith(state.HAInTopic+'/')) {
-        if (payloadFull=='null') return
-       
-        
-        else parent.HAIn(payloadFull,topic[1],json)
+        parent.HAIn(payloadFull,topic[1],json)
         return
         }
     //#########################################################################################################################################################################
