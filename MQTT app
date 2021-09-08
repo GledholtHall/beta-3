@@ -1,4 +1,4 @@
-// 03/09/2021 from 192.168.1.43 - pre 15
+// 08/09/2021 from 192.168.1.43 - pre15
 
 /*
  
@@ -438,7 +438,7 @@ app.updateSettingWithType("lots", myDeviceList, "capability")
 */
 
         if (vDev) { // && atomicState.edit) {  // this is the whole page
-          if (dOrigin=='user') {
+          if ((dOrigin=='user')|(dOrigin=='HA Discovery')) {
             log ("Selected Device is ${vDev.displayName}  - last was {$atomicState.vDev}","DEBUG")            
             if (vDev.displayName==atomicState.vDev) newDev=false else newDev=true
             log ("newDev is $newDev","LOG")
@@ -718,7 +718,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
            // attrList is an attribute object  atomicState.AttList is a text list of attributes.
 log (atomicState.attList,"LOG")   //  << much bigger list - complete
 log (attrList,"LOG")
-log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "TRACE")
+//log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "TRACE")
 
            if (attrList[i]!=null && attrList[i].dataType =="ENUM") {   
                
@@ -808,7 +808,7 @@ log(attrList[i].dataType + "- networkStatus should be ENUM - its string", "TRACE
         else {
                 if (vDev!=null) section (title: "This device <b> $vDev </b> is not enabled above") { }
                 }
-            } //origin=user
+            } //dOrigin=user
             else section (title: "This device <b> $vDev </b> was not created within this app and so can't be edited here") { }
         } // end dynamic page    (vDev)          
        //atomicState.edit=false 
@@ -1036,6 +1036,8 @@ def discovery() {  // can use atomicState vars in this section
    }
         
         section {}
+        numText=''
+		numEnabled=0
         if (settings?.HAInDiscovery){
             if (HAIn_switch!=null) numEnabled = settings?.HAIn_switch.size()
 		    if (HAIn_light!=null) numEnabled += settings?.HAIn_light.size()
@@ -1050,30 +1052,30 @@ def discovery() {  // can use atomicState vars in this section
 		else {
 			numText="disabled"
 		}
-        section (HAInEnabled+"<b> HA MQTT Discovery</b> INCOMPLETE <br>     [${numText}]</font>", hideable: true, hidden: true){
-        if (settings?.HAIn_switch != null) HAINsw = settings?.HAIn_switch.size() else HAINsw=0  // Elvis isnt in the house TODO
-        if (settings?.HAIn_light != null) HAINli = settings?.HAIn_light.size() else HAINli=0
-        if (settings?.HAIn_binary != null) HAINbi = settings?.HAIn_binary.size() else HAINbi=0
-        if (settings?.HAIn_sensor != null) HAINse = settings?.HAIn_sensor.size() else HAINse=0
-        if (settings?.HAIn_climate != null) HAINcl = settings?.HAIn_climate.size() else HAINcl=0
-        if (settings?.HAIn_cover != null) HAINco = settings?.HAIn_cover.size() else HAINco=0
-        if (settings?.HAIn_lock != null) HAINlo = settings?.HAIn_lock.size() else HAINlo=0 
+        section (HAInEnabled+"<b> Home Assistant MQTT Discovery</b> (partial)<br>     [${numText}]</font>", hideable: true, hidden: true){
+        if (settings?.HAIn_switch != null) HAInsw = settings?.HAIn_switch.size() else HAInsw=0  // Elvis isnt in the house TODO
+        if (settings?.HAIn_light != null) HAInli = settings?.HAIn_light.size() else HAInli=0
+        if (settings?.HAIn_binary != null) HAInbi = settings?.HAIn_binary.size() else HAInbi=0
+        if (settings?.HAIn_sensor != null) HAInse = settings?.HAIn_sensor.size() else HAInse=0
+        if (settings?.HAIn_climate != null) HAIncl = settings?.HAIn_climate.size() else HAIncl=0
+        if (settings?.HAIn_cover != null) HAInco = settings?.HAIn_cover.size() else HAInco=0
+        if (settings?.HAIn_lock != null) HAInlo = settings?.HAIn_lock.size() else HAInlo=0 
             
         // alarm_control_panel   camera  device_automation
             
         input "HAInDiscovery", "bool", title: "<b>HA Incoming Discovery<b>", required: true, defaultValue: false, submitOnChange: false
         input "HAInRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
-        input "RunHAInDiscovery", "button", title: "Run HA Incoming Discovery now"
-		input name: "HAInTopic", type: "text", title: "<b>Home Assistant Discovery Incoming topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
+        input "RunHAInDiscovery", "button", title: "Run HA MQTT Discovery now"
+		input name: "HAInTopic", type: "text", title: "<b>Home Assistant MQTT Discovery incoming topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
 		input "ClearHAInDiscovery", "button", title: "Clear discovered devices in dropdown lists" //, these can be recreated but the enabled device status is lost"
         input "DeleteDiscoveryDevices", "button", title: "Delete enabled devices from HE" //, these can be recreated as long as the enabled status is present
-        input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA Discovered switches &nbsp &nbsp &nbsp [^${HAINsw}]</b>", options: atomicState.HAInSwitchDevices.sort()
-        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA Discovered lights &nbsp &nbsp &nbsp [^${HAINli}]</b>", options: atomicState.HAInLightDevices.sort()
-        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA Discovered binary sensors &nbsp &nbsp &nbsp [^${HAINbi}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
-        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${HAINse}]</b>", options: atomicState.HAInSensorDevices.sort()
-        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${HAINcl}]</b>", options: atomicState.HAInClimateDevices.sort()
-        input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA Discovered cover devices &nbsp &nbsp &nbsp [^${HAINco}]</b>", options: atomicState.HAInCoverDevices.sort()
-        input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA Discovered lock devices &nbsp &nbsp &nbsp [^${HAINlo}]</b>", options: atomicState.HAInLockDevices.sort()
+        input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA Discovered switches &nbsp &nbsp &nbsp [^${HAInsw}]</b>", options: atomicState.HAInSwitchDevices.sort()
+        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA Discovered lights &nbsp &nbsp &nbsp [^${HAInli}]</b>", options: atomicState.HAInLightDevices.sort()
+        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA Discovered binary sensors &nbsp &nbsp &nbsp [^${HAInbi}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
+        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${HAInse}]</b>", options: atomicState.HAInSensorDevices.sort()
+        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${HAIncl}]</b>", options: atomicState.HAInClimateDevices.sort()
+        input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA Discovered cover devices &nbsp &nbsp &nbsp [^${HAInco}]</b>", options: atomicState.HAInCoverDevices.sort()
+        input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA Discovered lock devices &nbsp &nbsp &nbsp [^${HAInlo}]</b>", options: atomicState.HAInLockDevices.sort()
         }
 
         
@@ -7792,7 +7794,7 @@ def devSummary(evt=null) {
 	}
     if (settings?.HAInDiscovery){      
             if (settings?.HAIn_switch != null) HAInsw = settings?.HAIn_switch.size() else HAInsw=0  // Elvis isnt in the house TODO
-			if (settings?.HAIn_light != null) HAInli = settings?.HAIn_lights.size() else HAInli=0
+			if (settings?.HAIn_light != null) HAInli = settings?.HAIn_light.size() else HAInli=0
 			if (settings?.HAIn_sensor != null) HAInse = settings?.HAIn_sensor.size() else HAInse=0
 			if (settings?.HAIn_binary != null) HAInbs = settings?.HAIn_binary.size() else HAInbs=0
             if (settings?.HAIn_cover != null) HAInco = settings?.HAIn_cover.size() else HAInco=0
@@ -8390,6 +8392,7 @@ def checkProperty (dev,cmd) {
    }   
 
 def HAIn(payload,type,json) {
+    if (payload=='null') return
     def data = parseJson(payload)
     UID=data.unique_id
     skipAll=false
