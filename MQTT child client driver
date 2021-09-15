@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 8/9/2021 from 192.168.1.43  pre15
+// 23/8/2021 from 192.168.1.246  pre16
 import java.security.MessageDigest
 
 metadata {
@@ -19,6 +19,7 @@ metadata {
 		//command "setCommandTopic", ["String","String"]
 		//command "ack", ["Integer"]
         //command "setEventDelay",["Integer"]
+        command "logOutgoingMessages",["Boolean"]
 		command "reset"
         command "connect"
         command "disconnect"
@@ -75,14 +76,17 @@ def initialize() {
     state.seq=0
     state.subs=0
     state.count=0
+    state.logOut=false
+    if (state.HAInTopic==null) state.HAInTopic="unused3"
     if (state.zwave2mqttTopic==null) state.zwave2mqttTopic="unused1"
     if (state.zigbee2mqttTopic==null) state.zigbee2mqttTopic="unused2"
-    if (state.HAInTopic==null) HAInTopic="unused3"
+    if (state.HAStatestreamTopic==null) state.HAStatestreamTopic="unused4"
+    
     //state.ack=[]
     //state.maxImmediate=0 
     //state.maxComplete=0
     state.topic0="DoNoTmatch"
-    if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
+  //  if (MD5(location.hubs[0].getZigbeeId())=="202cb962ac59075b964b07152d234b70") state.myHub=true
     heartbeat()
     schedule("0/20 * * * * ? *", heartbeat)
     version="beta 3e pre15"
@@ -270,6 +274,7 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
         return
     }
     qos=1  //enforce FTTB
+        if (state.logOut) log ("Publish >>> [$topic]   [$payload]","BLUE")
         interfaces.mqtt.publish(topic, payload, qos, retained)
         sendEvent (name: "Sequence", value: state.seq++)  
 }
@@ -305,6 +310,20 @@ def setStateWaiting (sw) {  // had to use this method as was not working when di
 def getStateWaiting () {
      return (state.waiting)
 }
+
+def setmyhub(mine="false") {
+    if (mine=="true") {
+        state.myHub=true
+    }
+    else {
+        state.myHub=false
+    }
+}
+
+def logOutgoingMessages(logging){
+    if (logging=='true') state.logOut = true else state.logOut=false
+         log ("Changing publish logging to $state.logOut","INFO")
+        }
     
 def unsubscribeTopic (String s) {
     mqttState=interfaces.mqtt.isConnected()
@@ -330,7 +349,7 @@ def subscribeWildcardTopic (String s) {
         sendEvent (name: "Subscribes", value: state.subs++)
         pauseExecution(60)
         interfaces.mqtt.unsubscribe(s)
-        log ("MQTT unsubscribing from: " + s, "INFO")
+        log ("MQTT unsubscribing from: " + s, "LOG")
     }
     else log("Dropping subscription - no MQTT connection","WARN")
 }
@@ -392,9 +411,12 @@ def parse(String description) {
         
     //#########################################################################################################################################################################
     if (topicFull.startsWith(state.HAInTopic+'/')) {
-        parent.HAIn(payloadFull,topic[1],json)
-        return
-        }
+        if ((topic[3]=='config')||(topic[3]=='config')){                  // <<< TO DO >>>>
+            parent.HAIn(payloadFull,topic[1],topic,json)
+            return
+            }
+        else parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+    }
     //#########################################################################################################################################################################
     //#########################################################################################################################################################################
     if (topicFull.startsWith(state.zigbee2mqttTopic)) {
@@ -440,6 +462,7 @@ def parse(String description) {
         rxMsg= "MQTT>RX:[$state.seq2]  [${interfaces.mqtt.parseMessage(description).payload}]  ${interfaces.mqtt.parseMessage(description).topic}"
         log ( "              " + rxMsg,"KH")
     }
+     else if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
     //else log ( "              " + rxMsg,"GREEN")  // will need to create rxMsg again if re-enable
     // TODO make more use of topicCount for topic validation - some topics that currently match have further subTopics
 	// Potential bug TODO - if we set up a virtual device to import to HE and it matches here 'early' it wont be onwardly passed to HE e.g. within homie topic
@@ -592,7 +615,7 @@ def parse(String description) {
         else if (topic[1]=='climate') {
 			if (topic[3]=='friendly_name') {
                 parent.HAClimateFriendlyP(topic[2],deQuote(payload[0]),topic[1])
-				log ("Device ${topic[2]} is a HA climate device and is called " +payload[0], "KH")
+				log ("Device ${topic[2]} is a HA climate device and is called " +payload[0], "TRACE")
 				//def evt3= createEvent(name: "HAClimateDev", value: topic[2], data: [label: deQuote(payload[0]),seq: sequence], isStateChange: true)
                 return // evt3
 			}
@@ -754,57 +777,59 @@ def parse(String description) {
 				log ("Timeout cancelled as got a property response  ${payload}   ${payload[0]}  from  ${topic}","DEBUG")
 				//def evt23 = createEvent(name: "getTopic", value: topic[2], data: [state: payload,seq: sequence, topic: interfaces.mqtt.parseMessage(description).topic], isStateChange: true)
                 return //evt23
-			}            
+			}  
+/*
            if (topic[2]=='$fw') {  // This is a random (non updating) topic used to pace the progress of subscriptions
             if (topic[3]=='name') {
                 //log ("<b style = 'color: blue'>============ homie Discovery has completed ============</b>","INFO")
                 if (device.currentWaiting=="name") {
-                    log  ("============ Asking HA Discovery to start  ============","INFO")
-                    sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true)
+                    log  ("============ B4 was Asking HA Discovery to start  ============","INFO")
+                    //sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true)
                     setStateWaiting ("none")
-                    sendEvent (name: "Waiting", value: "none")
+                    // sendEvent (name: "Waiting", value: "none")
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/name')
                 }
                 else {
                     log ("Received pacing 'name' but expected $device.currentWaiting", "KH")
-                    log  ("====== Regardless still asking HA Discovery to start  ========","INFO")
-                    sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true) 
+                    log  ("====== Regardless B4 still asking HA Discovery to start  ========","INFO")
+                    //sendEvent(name: "HADiscoverStart", value: 'HAstart',isStateChange: true) 
                 }
             }//name                              
             else if (topic[3]=='client') {
                 if (device.currentWaiting=="client") {
                     setStateWaiting ("version")
-                    sendEvent (name: "Waiting", value: "version")
-                    log ("============ Unsubscribing from HA friendly_names ============","INFO")
-                    sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true)
+                    //sendEvent (name: "Waiting", value: "version")
+                    log ("============ B4 Unsubscribing from HA friendly_names ============","INFO")
+                    // sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true)
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/client')
                 }
                 else {
                     log ("Received pacing 'client' but expected $device.currentWaiting", "KH")
-                    log ("======= Regardless still unsubscribing from HA friendly_names ========","INFO")                    
-                    sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true) 
+                    log ("======= B4 Regardless still unsubscribing from HA friendly_names ========","INFO")                    
+                    //sendEvent(name: "unsubscribeFriendly", value: "true",isStateChange: true) 
                 }
             } //client
             else if (topic[3]=='version') {
                 log ("============   HA Discovery has completed   =============","INFO")
                 if (device.currentWaiting=="version") {
-                    log  ("============ Asking Startup Summary to run  ============","INFO")
+                    log  ("============ B4 Asking Startup Summary to run  ============","INFO")
                     setStateWaiting ("complete")
-                    sendEvent (name: "Waiting", value: "complete")
-                    sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
+                    //sendEvent (name: "Waiting", value: "complete")
+                    // sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
                     unsubscribeTopic ('homie/'+state.normHubName+'/$fw/version')
                 }
                 else {
                     log ("Received pacing 'version' but expected $device.currentWaiting", "KH")
                     log ("========  Regardless HA Discovery has completed   =============","INFO")
-                    log ("======== Regardless asking Startup Summary to run ============","INFO")
-                    sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
+                    log ("======== B4 Regardless asking Startup Summary to run ============","INFO")
+                    //sendEvent(name: "HADiscoverStart", value: 'complete',isStateChange: true)
                     setStateWaiting ("complete")
                 }
 
             } //version
 
         } // not $fw
+*/
 	}  //topiccount 4
     } // not local homie message	
 	else if (topic[0]=="homie" && topic[1]== state.homieDeviceDiscovery)  {   // remote subscribed homie) 
