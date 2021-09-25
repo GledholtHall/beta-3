@@ -1,6 +1,9 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 22/9/2021 from 192.168.1.246  pre17
+// 25/9/2021 from 192.168.1.246  pre18
 import java.security.MessageDigest
+import groovy.transform.Field
+@Field static String mqttPassword=''
+@Field static Integer subscribed=0
 
 metadata {
     definition (name: "MQTT Client", namespace: "ukusa", author: "Kevin Hawkins",importUrl: "https://raw.githubusercontent.com/Gledholt Hall/MQTT/beta3/MQTT%20Client%20driver") {
@@ -15,9 +18,12 @@ metadata {
 		command "reset"
         command "connect"
         command "disconnect"
-        attribute "Sequence", "number"
-        attribute "Subscribes", "number"
+        //attribute "sequence", "number"
+        attribute "subscribes", "number"
         attribute "waiting","string"
+        attribute "RX_minute","number"
+        attribute "TX_minute","number"
+        attribute "heartbeat","number"
     }
 }
 
@@ -32,6 +38,12 @@ def installed() {
 def updated() {
     log ("MQTT client updated...", "INFO")
     initialize()
+    state.remove("subs")
+    state.remove("password")
+    state.remove("seq2")
+    state.remove("seqNum")
+    state.remove("count")
+    state.remove("seq")
 }
 
 def uninstalled() {
@@ -40,13 +52,19 @@ def uninstalled() {
 }
 
 def initialize() {
+    state.remove("subs")
+    state.remove("password")
+    state.remove("seq2")
+    state.remove("seqNum")
+    state.remove("count")
+    state.remove("seq")
     state.myHub=false
     unschedule (heartbeat)
-    state.seqNum=0
-    state.seq=0
-    state.subs=0
-    state.count=0
+    state.heartbeat=0
+    state.msgIn=0
+    state.msgOut=0
     state.logOut=false
+    setHAInDiscovery(false)
     if (state.HAInTopic==null) state.HAInTopic="unused"
     if (state.zwave2mqttTopic==null) state.zwave2mqttTopic="unused"
     if (state.zigbee2mqttTopic==null) state.zigbee2mqttTopic="unused"
@@ -54,14 +72,16 @@ def initialize() {
     if (state.CBusTopic==null) state.CBusTopic="unused"
     state.topic0="DoNoTmatch"
     heartbeat()
-    schedule("0/20 * * * * ? *", heartbeat)
-    version="beta 3e pre17"
+    schedule("0 * * ? * *", heartbeat)
+    version="beta 3e pre 18"
     
     sendEvent (name: "presence", value: "not present")
-    sendEvent (name: "Sequence", value: state.seq++)
+    //sendEvent (name: "sequence", value: state.seq++)
     state.waiting = "none"
     sendEvent (name: "waiting", value: "none")
-    sendEvent (name: "Subscribes", value: state.subs++)
+    subscribed=0
+    sendEvent (name: "subscribes", value: ++subscribed)
+
 	state.continue=false	
     if (state.normHubName==null) state.normHubName = "temporary"
 }
@@ -81,7 +101,9 @@ def connect() {
         subscribeTopic ('homie/'+state.normHubName+'/$heartbeat')
         parent.mqttStatus ("Connect")
         state.connectionAttempts = 0
-        state.seq2=0
+        //state.seq2=0
+        state.msgIn=0
+        state.msgOut=0
     }
     else log ("MQTT not connected","ERROR")      
 }
@@ -98,12 +120,15 @@ void setLogLevel (level) {
     }
 }
 
-
+void setHAInDiscovery(Boolean disc) {
+    state.HAInDisc=disc
+    log("HAIn Discovery is $disc","INFO")
+}
 void setUserName(String username) {
     state.username=username
 }
 void setPassword(String password) {
-    state.password=password
+    mqttPassword=password
 }
 void setBrokerAddress(String broker) {
     state.MQTTBroker=broker 
@@ -150,7 +175,7 @@ boolean mqttConnect() {
          try{
             if (state.clean=='true') log ("Connecting with 'clean' session as Hubitat_${state.normHubName} to MQTT broker $state.MQTTBroker", "INFO")
             else if (state.clean=='false') log ("Connecting with 'resurrect' session as Hubitat_${state.normHubName} to MQTT broker ${settings?.MQTTBroker}", "INFO")
-            mqttInt.connect(state.MQTTBroker, "Hubitat_${state.normHubName}", state.username,state.password,cleanSession: false, lastWillTopic: "Hubitat/${state.normHubName}/LWT", lastWillQos: 0, lastWillMessage: "I died")//give it a chance to start
+            mqttInt.connect(state.MQTTBroker, "Hubitat_${state.normHubName}", state.username,mqttPassword,cleanSession: false, lastWillTopic: "Hubitat/${state.normHubName}/LWT", lastWillQos: 0, lastWillMessage: "I died")//give it a chance to start
             pauseExecution(1000)
             mqttState=mqttInt.isConnected()
             if (mqttState) {
@@ -226,27 +251,23 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
     qos=1  //enforce FTTB
         if (state.logOut) log ("Publish >>> [$topic]   [$payload]","BLUE")
         interfaces.mqtt.publish(topic, payload, qos, retained)
-        sendEvent (name: "Sequence", value: state.seq++)  
+        //sendEvent (name: "sequence", value: state.seq++)
+        state.msgOut++
 }
 
 
 def subscribeTopic (String s) {
     
-    if (s.startsWith('homie/development/$fw/')) {
-        log ("MQTT subscribing to: " + s, "LOG")
-        if (s.endsWith("name")) setStateWaiting ("name")
-        else if (s.endsWith("version")) setStateWaiting ("version")
-        else if (s.endsWith("client")) setStateWaiting ("client")
-        log ("state.waiting is now $state.waiting","DEBUG")
-            }
-    else {
-        log ("MQTT subscribing to: " + s, "INFO")
-    }
+    log ("MQTT subscribing to: " + s, "INFO")
+
     mqttState=interfaces.mqtt.isConnected()
     if (mqttState){
         qos=1
         interfaces.mqtt.subscribe(s,qos)
-         sendEvent (name: "Subscribes", value: state.subs++)   
+        if (s.contains('/+') || s.contains('/*')) {} 
+        else {
+            sendEvent (name: "subscribes", value: ++subscribed)
+        }
     }
     else log("Dropping subscription - no MQTT connection","WARN")
 }
@@ -280,7 +301,10 @@ def unsubscribeTopic (String s) {
 	log ("MQTT unsubscribing from: " + s, "INFO")
     if (mqttState){
         interfaces.mqtt.unsubscribe(s)
-         sendEvent (name: "Subscribes", value: --state.subs)   
+        if (s.contains('/+') || s.contains('/*')) {}         
+        else {
+            sendEvent (name: "subscribes", value: --subscribed)   // ignore wildcarded subs as cant count unsubs accurately
+        } 
     }
     else log("Dropping unsubscribe - no MQTT connection","WARN")
 }
@@ -296,7 +320,7 @@ def subscribeWildcardTopic (String s) {
         state.topic2=topics[2]
         //state.topic3=topics[3]
         interfaces.mqtt.subscribe(s,1)
-        sendEvent (name: "Subscribes", value: state.subs++)
+        //sendEvent (name: "subscribes", value: ++subscribed) // ignore as wildcarded
         pauseExecution(60)
         interfaces.mqtt.unsubscribe(s)
         log ("MQTT unsubscribing from: " + s, "LOG")
@@ -315,7 +339,10 @@ def getTopic (String s) {
 	log  ("Checking on ${s}","ERROR")
     if (mqttState) {
         interfaces.mqtt.subscribe(s)
-        sendEvent (name: "Subscribes", value: state.subs++) 
+        if (s.contains('/+') || s.contains('/*')) {}         
+        else {
+            sendEvent (name: "subscribes", value: ++subscribed)  // ignore wildcarded subs as cant count unsubs accurately
+        }
 	    pause (1800)//   TODO adjust based on actual response
 	    notfoundevt(s)
     }
@@ -335,11 +362,16 @@ def notfoundevt(String s){
 }
 
 def heartbeat (seqNum=0) {
+    sendEvent (name: "TX_minute", value: state.msgOut)
+    sendEvent (name: "RX_minute", value: state.msgIn)
+    sendEvent (name: "heartbeat", value: state.heartbeat)
     mqttState=interfaces.mqtt.isConnected()
-    if (mqttState) interfaces.mqtt.publish("homie/${state.normHubName}" + '/$heartbeat',state.seqNum.toString() + "," + device.currentWaiting,1,true)
-    log ("Tx: heartbeat [$state.seqNum]   $device.currentWaiting", "TRACE")
-    state.seqNum++
+    if (mqttState) interfaces.mqtt.publish("homie/${state.normHubName}" + '/$heartbeat',state.heartbeat.toString() + ", [" + state.msgIn.toString()+','+state.msgOut.toString()+']',1,false)
+    state.msgIn=0
+    state.msgOut=0
+    state.heartbeat++
 }
+
 
 def bufferEmpty(i){
     log  ("MQTT message queue idle","INFO")
@@ -348,6 +380,7 @@ def bufferEmpty(i){
 
 def parse(String description) {
     runIn (30, "bufferEmpty")
+    state.msgIn++
     topicFull=interfaces.mqtt.parseMessage(description).topic
 
 	def topic=topicFull.split('/')
@@ -361,7 +394,7 @@ def parse(String description) {
         
     //#########################################################################################################################################################################
     if (topicFull.startsWith(state.HAInTopic+'/')) {
-        if ((topic[3]=='config')||(topic[3]=='config')){                  // <<< TO DO >>>>
+        if (topic[3]=='config'){                 
             parent.HAIn(payloadFull,topic[1],topic,json)
             return
             }
@@ -373,7 +406,7 @@ def parse(String description) {
             parent.HAInFriendlyName(payloadFull,topic[1],topic,json)
             return
             }
-         else if (topic[3]=='state'){                  // <<< TO DO >>>>
+         else if ((state.HAInDisc==true)&&(topic[3]=='state')){                  // if not in discovery then this is an event handled below
             parent.HAInState(payloadFull,topic[1],topic,json)
             return
             }
@@ -397,8 +430,7 @@ def parse(String description) {
         return
         }
     //#########################################################################################################################################################################
-    
-    
+/*       
     if (topicFull.startsWith('homie/'+state.normHubName+'/$heartbeat')) {
         if (device.currentWaiting != "none"){
             if (device.currentWaiting == "complete") {
@@ -417,11 +449,12 @@ def parse(String description) {
             }   
         }
    }
-        
+      
     else if (topicFull.startsWith('homie/'+state.normHubName+'/$fw')){
         rxMsg= "MQTT>RX:[$state.seq2]  [${interfaces.mqtt.parseMessage(description).payload}]  ${interfaces.mqtt.parseMessage(description).topic}"
         log ( "              " + rxMsg,"KH")
     }
+*/
      else if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
      else if (topic[0]==state.topic0){
         if ((topic[1]==state.topic1) || (state.topic1=='+')|| (state.topic1=='#')){
@@ -608,8 +641,8 @@ def parse(String description) {
             return
 		}
         else if (topic[1]=='locks') {
-            state.seq2++
-            sequence=state.seq2.toString()
+            //state.seq2++
+            //sequence=state.seq2.toString()
 			if (topic[3]=='friendly_name') {                
 				log ("Device ${topic[2]} is a HA lock and is called " +payload[0], "TRACE")
                 parent.HALockFriendlyP(topic[2],deQuote(payload[0]),topic[1])
@@ -647,8 +680,8 @@ def parse(String description) {
     
 	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming homie 'set' commands that control Hubitat devices here
         log ("Received this message from homie " + topic + " " + payload, "TRACE")
-            state.seq2++
-            sequence=state.seq2.toString()
+            //state.seq2++
+            //sequence=state.seq2.toString()
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
                 parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
@@ -671,7 +704,7 @@ def parse(String description) {
 				log ("UNSUBSCRIBE from ${interfaces.mqtt.parseMessage(description).topic}","DEBUG")
                 unsubscribe(interfaces.mqtt.parseMessage(description).topic)
                 parent.topicPayload (topic[2],payload,interfaces.mqtt.parseMessage(description).topic)
-                //sendEvent (name: "Subscribes", value: --state.subs)				
+                //sendEvent (name: "subscribes", value: ++subscribed)				
 				log ("Timeout cancelled as got a property response  ${payload}   ${payload[0]}  from  ${topic}","DEBUG")
                 return
 			}  
@@ -742,7 +775,7 @@ def parse(String description) {
         else if (topicCount==5)
             {
             if (topic[4]=='$unit') { 
-            log ( "--$state.seq2--   - mS","DEBUG")
+            //log ( "--$state.seq2--   - mS","DEBUG")
 			log("Received homie UOM from MQTT ${topic[2]} " + status, "TRACE")
 		 }
          }
