@@ -1,4 +1,4 @@
-// 25/09/2021 from 192.168.1.246 - beta 3e pre18  (after DB restore)
+// 05/10/2021 from 192.168.1.246 - beta 3e pre19
 
 /*
  
@@ -72,7 +72,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 18"){}
+            section("  ver:   beta 3e pre 19"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -332,7 +332,8 @@ def vMQTT() {
         atomicState.first=false
 
         if (vDev) { // && atomicState.edit) {  // this is the whole page
-          if ((dOrigin=='user')||(dOrigin=='HA Discovery')||(dOrigin=="C-Bus")) {
+          // if ((dOrigin=='user'){  // open it to all
+          if ((dOrigin=='user')||(dOrigin=='HA Discovery')||(dOrigin=='Home Assistant')||(dOrigin=="C-Bus")||(dOrigin=='homie')) {
             log ("Selected Device is ${vDev.displayName}  - last was {$atomicState.vDev}","DEBUG")            
             if (vDev.displayName==atomicState.vDev) newDev=false else newDev=true
             log ("newDev is $newDev","LOG")
@@ -683,8 +684,9 @@ def discovery() {  // can use atomicState vars in this section
         if (atomicState.HAInSwitchDevices != null) numHAInDevs+= atomicState.HAInSwitchDevices.size()
         //if (atomicState.HAInUnknownDevices != null) numInHADevs+= atomicState.HAInUnknownDevices.size()        
         numCBusLightDevs=0
+        numCBusTextDevs=0
         if (atomicState.CBusLightDevices != null) numCBusLightDevs+= atomicState.CBusLightDevices.size()
-
+        if (atomicState.CBusTextDevices != null) numCBusTextDevs+= atomicState.CBusTextDevices.size()
 		def numEnabled=0
 		if (Homie_onoff!=null) numEnabled += settings?.Homie_onoff.size()
 		if (Homie_dim!=null) numEnabled += settings?.Homie_dim.size()
@@ -799,14 +801,16 @@ def discovery() {  // can use atomicState vars in this section
         section{}
         numEnabled=0
         if (settings.CBus_light!=null) numEnabled += settings?.CBus_light.size()
+        if (settings.CBus_text!=null) numEnabled += settings?.CBus_text.size()
 		if (settings?.CBusDiscovery){
-			if (atomicState.started) numText = "${numEnabled} of ${numCBusLightDevs} discovered devices enabled"
+			if (atomicState.started) numText = "${numEnabled} of ${numCBusLightDevs+numCBusTextDevs} discovered devices enabled"
 			else numText="checking"
 		}
 		else {
 			numText="disabled"
 		}
-        if (settings?.CBus_light != null) CB = settings?.CBus_light.size() else CB=0
+        if (settings?.CBus_light != null) CBl = settings?.CBus_light.size() else CBl=0
+        if (settings?.CBus_text != null) CBt = settings?.CBus_text.size() else CBt=0
         section (CBusEnabled+"<b>C-Bus</b><br>     [${numText}]</font>", hideable: true, hidden: true){
 
     	input "CBusDiscovery", "bool", title: "<b>C-Bus<b>", required: true, defaultValue: false, submitOnChange: false
@@ -816,7 +820,8 @@ def discovery() {  // can use atomicState vars in this section
 		input "ClearCBusDiscovery", "button", title: "Clear discovered devices in dropdown lists" //, these can be recreated but the enabled device status is lost"
         input "DeleteCBusDiscoveryDevices", "button", title: "Delete enabled devices from HE" //, these can be recreated as long as the enabled status is present
 
-        input "CBus_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.CBusLightDevices.size()}  C-Bus lights &nbsp &nbsp &nbsp [^$numEnabled]</b>", options: atomicState.CBusLightDevices.sort()
+        input "CBus_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.CBusLightDevices.size()}  C-Bus lights &nbsp &nbsp &nbsp [^$CBl]</b>", options: atomicState.CBusLightDevices.sort()
+        input "CBus_text", "enum", multiple: true, title: "<b>Discovered ${atomicState.CBusTextDevices.size()}  C-Bus text &nbsp &nbsp &nbsp [^$CBt]</b>", options: atomicState.CBusTextDevices.sort()
 		//input "CBus_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.sensorDevices.size()} zigbee2mqtt sensors &nbsp &nbsp &nbsp [^${hs}]</b>", options: atomicState.sensorDevices.sort()
         }
     }
@@ -883,16 +888,16 @@ def discovery() {  // can use atomicState vars in this section
 		input name: "HAInTopic", type: "text", title: "<b>Home Assistant MQTT Discovery incoming topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false
 		input "ClearHAInDiscovery", "button", title: "Clear discovered devices in dropdown lists" //, these can be recreated but the enabled device status is lost"
         input "DeleteDiscoveryDevices", "button", title: "Delete enabled devices from HE" //, these can be recreated as long as the enabled status is present
-        input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA Discovered switches &nbsp &nbsp &nbsp [^${HAInsw}]</b>", options: atomicState.HAInSwitchDevices.sort()
-        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA Discovered lights &nbsp &nbsp &nbsp [^${HAInli}]</b>", options: atomicState.HAInLightDevices.sort()
-        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA Discovered binary sensors &nbsp &nbsp &nbsp [^${HAInbi}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
-        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA Discovered sensors &nbsp &nbsp &nbsp [^${HAInse}]</b>", options: atomicState.HAInSensorDevices.sort()
-        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA Discovered climate devices &nbsp &nbsp &nbsp [^${HAIncl}]</b>", options: atomicState.HAInClimateDevices.sort()
-        input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA Discovered covers &nbsp &nbsp &nbsp [^${HAInco}]</b>", options: atomicState.HAInCoverDevices.sort()
-        input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA Discovered locks &nbsp &nbsp &nbsp [^${HAInlo}]</b>", options: atomicState.HAInLockDevices.sort()
-        input "HAIn_automation", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInAutomations.size()} HA Discovered automations &nbsp &nbsp &nbsp [^${HAInau}]</b>", options: atomicState.HAInAutomations.sort()
-        input "HAIn_person", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInPersonDevices.size()} HA Discovered persons &nbsp &nbsp &nbsp [^${HAInpe}]</b>", options: atomicState.HAInCoverDevices.sort()
-        input "HAIn_group", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInGroups.size()} HA Discovered groups &nbsp &nbsp &nbsp [^${HAIngr}]</b>", options: atomicState.HAInGroups.sort()
+        input "HAIn_switch", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSwitchDevices.size()} HA switches &nbsp &nbsp &nbsp [^${HAInsw}]</b>", options: atomicState.HAInSwitchDevices.sort()
+        input "HAIn_light", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLightDevices.size()} HA lights &nbsp &nbsp &nbsp [^${HAInli}]</b>", options: atomicState.HAInLightDevices.sort()
+        input "HAIn_binary", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInBinarySensorDevices.size()} HA binary sensors &nbsp &nbsp &nbsp [^${HAInbi}]</b>", options: atomicState.HAInBinarySensorDevices.sort()
+        input "HAIn_sensor", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInSensorDevices.size()} HA sensors &nbsp &nbsp &nbsp [^${HAInse}]</b>", options: atomicState.HAInSensorDevices.sort()
+        input "HAIn_climate", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInClimateDevices.size()} HA climate devices &nbsp &nbsp &nbsp [^${HAIncl}]</b>", options: atomicState.HAInClimateDevices.sort()
+        input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA covers &nbsp &nbsp &nbsp [^${HAInco}]</b>", options: atomicState.HAInCoverDevices.sort()
+        input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA locks &nbsp &nbsp &nbsp [^${HAInlo}]</b>", options: atomicState.HAInLockDevices.sort()
+        input "HAIn_automation", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInAutomations.size()} HA automations &nbsp &nbsp &nbsp [^${HAInau}]</b>", options: atomicState.HAInAutomations.sort()
+        input "HAIn_person", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInPersonDevices.size()} HA persons &nbsp &nbsp &nbsp [^${HAInpe}]</b>", options: atomicState.HAInCoverDevices.sort()
+        input "HAIn_group", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInGroups.size()} HA groups &nbsp &nbsp &nbsp [^${HAIngr}]</b>", options: atomicState.HAInGroups.sort()
         }
    
     }
@@ -951,6 +956,7 @@ def appButtonHandler(btn) {
     }
     else if (btn=="ClearCBusDiscovery") {
         atomicState.CBusLightDevices=[]
+        atomicState.CBusTextDevices=[]
     }
     else if (btn=="DeleteHAInDiscoveryDevices") {
         HADeleteDev("MQTT:HADisc_")
@@ -1003,7 +1009,8 @@ def checkAtomics () {
     atomicState.HAInGroups = (atomicState.HAInGroups != null)?atomicState.HAInGroups:[]       
                 
     atomicState.zigbee2mqttLightDevices=(atomicState.zigbee2mqttLightDevices != null)?atomicState.zigbee2mqttLightDevices:[]
-    atomicState.CBusLightDevices=(atomicState.CBusLightDevices != null)?atomicState.CBusLightDevices:[]   
+    atomicState.CBusLightDevices=(atomicState.CBusLightDevices != null)?atomicState.CBusLightDevices:[] 
+    atomicState.CBusTextDevices=(atomicState.CBusTextDevices != null)?atomicState.CBusTextDevices:[]
         
 }
 
@@ -1341,7 +1348,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 18',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 19',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -2211,6 +2218,7 @@ def wipe() {
     atomicState.zigbee2mqttSensorDevices=[]
     atomicState.zigbee2mqttButtontDevices=[]
     atomicState.CBusLightDevices=[]
+    atomicState.CBusTextDevices=[]
     atomicState.Mappings=[:]
     log ("All atomicState devices[] cleared","WARN")
     atomicState.vList.each { devType ->
@@ -2928,7 +2936,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 18 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 19 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3383,6 +3391,7 @@ def subscribeCBusTopic() {
 	log ("Adding C-Bus incoming subscription topics for " + settings?.CBusTopic, "INFO")
 	//mqtt.subscribeTopic(settings?.CBusTopic+'/+/state')
     mqtt.subscribeTopic(settings?.CBusTopic+'/+/group')
+    mqtt.subscribeTopic(settings?.CBusTopic+'/+/value')
     mqtt.subscribeTopic('homie/'+atomicState.normHubName+'/$pacing')
     pacingSet("CBusEnd")
     //mqtt.publishMsg ('homie/'+atomicState.normHubName+'/$pacing',"CBusEnd",1,false)
@@ -3500,8 +3509,9 @@ def unsubscribeCBusEvents(msg=true){
         log ("========== C-Bus Discovery has completed in $time secs  ==========","BLUE")
     }
         mqtt = getChildDevice("MQTT: Child device driver")
-        //mqtt.unsubscribeTopic(settings?.CBusTopic+'/+/state')
+        mqtt.unsubscribeTopic(settings?.CBusTopic+'/+/state')
         mqtt.unsubscribeTopic(settings?.CBusTopic+'/+/group')
+        mqtt.unsubscribeTopic(settings?.CBusTopic+'/+/value')
 }
 
 def homieDiscovery() {
@@ -3793,7 +3803,8 @@ def pacingSet(pace) {
 
 def pacingLost (data) {
 
-    if ("$data"!="cancel") log.error ("MQTT broker lost pacing response for [$data]")
+    if (("$data"=="cancel")||("$data"=="idle"))return
+    log.error ("MQTT broker lost pacing response for [$data]")
 }
 
 def pacing(payload) {
@@ -6456,17 +6467,32 @@ def zigbee2mqttLight(name,label,type) {
 }
 
 def CBus(name,group,type) {
-    temp = atomicState.CBusLightDevices
-	if (temp==null) temp=[]
-	if (temp.contains(name)) {
-		//log ("Already in list: $name", "KH")
-	}
-	else {
-		//log ("C-Bus In Adding light to list: $name label ", "KH")
-		temp.add(name)
-		atomicState.CBusLightDevices = temp
-	}
-    if ((settings?.CBus_light != null) && (settings?.CBus_light.contains (name))) createChildDevice (name, type, "C-Bus", group)
+    if (type=='light') {
+        temp = atomicState.CBusLightDevices
+	    if (temp==null) temp=[]
+	    if (temp.contains(name)) {
+		    //log ("Already in list: $name", "KH")
+	    }
+	    else {
+		    //log ("C-Bus In Adding light to list: $name label ", "KH")
+		    temp.add(name)
+		    atomicState.CBusLightDevices = temp
+	    }
+        if ((settings?.CBus_light != null) && (settings?.CBus_light.contains (name))) createChildDevice (name, type, "C-Bus", group)
+    }
+    else if (type=='temperature') { 
+        temp = atomicState.CBusTextDevices
+	    if (temp==null) temp=[]
+	    if (temp.contains(name)) {
+		    //log ("Already in list: $name", "KH")
+	    }
+	    else {
+		    //log ("C-Bus In Adding text to list: $name label ", "KH")
+		    temp.add(name)
+		    atomicState.CBusTextDevices = temp
+	    }
+        if ((settings?.CBus_text != null) && (settings?.CBus_text.contains (name))) createChildDevice (name, 'sensor', "C-Bus", group, type)
+    }
 }
 
 def wildcardTopics(topics) {  // TODO merge with above
@@ -7445,8 +7471,8 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 			// TODO decide ..this gets fired (but ignored) on every change of state update - can we eliminate that without breaking incremental discovery ?
 			// no but could use ...  if(atomicState.started)
 			if (!atomicState.started && (settings?.mqttRemoveDevices == true)) log ("Child already exists " + prefix+name, "WARN")
-            log ("Device already exists [$child]: Re-register event listener", "INFO") 
-            subscribe(child, "switch", switched)  // this only handles switch events  - need the rest
+            //log ("Device already exists [$child]: Re-register event listener", "INFO") 
+            //subscribe(child, "switch", switched)  // this only handles switch events  - need the rest
 			return
 		}
     def nameSpace="hubitat" // now all devices are Hubitat                                        
@@ -7783,9 +7809,10 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         else log ("config was null in createDevice","WARN")
     }
     else if (system=="C-Bus") {
-        
+        if (type=='light'){
                             mqtt.subscribeTopic(settings?.CBusTopic+"/$name/state")  // This is to support individual subscribes
                             child.updateDataValue("origin","C-Bus")
+                            child.updateDataValue("mqtt","enabled")
                             child.updateDataValue("switch_Topic",settings?.CBusTopic+"/$name/state")
                             child.updateDataValue("switch_Cmd", settings?.CBusTopic+"/$name/state/cmd")
                             //child.updateDataValue("level_Topic",atomicState.HA+'/light/'+name+'/brightness')
@@ -7803,7 +7830,38 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         	                mqtt.subscribeTopic(settings?.CBusTopic+"/$name/state")
                             mqtt.subscribeTopic(settings?.CBusTopic+"/$name")
                             subscribe(child, "switch", switchedDim)
-                            subscribe(child, "level", dimmed)       
+                            subscribe(child, "level", dimmed) 
+        }
+        else if (type=='sensor') {
+            if (dType=="temperature"){
+                            mqtt.subscribeTopic(settings?.CBusTopic+"/$name/value")  // This is to support individual subscribes
+                            child.updateDataValue("origin","C-Bus")
+                            child.updateDataValue("mqtt","enabled")
+                            child.updateDataValue("temperature_Topic",settings?.CBusTopic+"/$name/value")
+                            //child.updateDataValue("switch_Cmd", settings?.CBusTopic+"/$name/state/cmd")
+                            //child.updateDataValue("level_Topic",atomicState.HA+'/light/'+name+'/brightness')
+                            //child.updateDataValue("level_Topic", settings?.CBusTopic+"/$name")
+                            //child.updateDataValue("level_Cmd", settings?.CBusTopic+"/$name/level/cmd")
+                            //child.updateDataValue("switch_MAP","[on,off]")
+                            //child.updateDataValue("max_Level","255")
+                            //child.updateDataValue("C-Bus_Group",friendlyName)
+                            child.updateDataValue("C-Bus_App","measurement 228")
+                            //log ("Register 'switchedDim' event listener for " + child, "KH") 
+                            //subscribe(child, "switch", switchedDim)
+                            //log ("Register 'dimmed' event listener for " + child, "KH") 
+                            //subscribe(child, "level", dimmed)
+                            updateTopicLink(child.displayName,settings?.CBusTopic+"/$name/value",child.deviceNetworkId)
+                            //updateTopicLink(child.displayName,settings?.CBusTopic+"/$name",child.deviceNetworkId)             
+        	                mqtt.subscribeTopic(settings?.CBusTopic+"/$name/value")
+                            //mqtt.subscribeTopic(settings?.CBusTopic+"/$name")
+                            //subscribe(child, "switch", switchedDim)
+                            //subscribe(child, "level", dimmed)
+            }
+
+            
+            
+        }
+        
     }
                        
                 else if (system=="Shelly"){
@@ -7926,8 +7984,10 @@ def devSummary(evt=null) {
         sumLog (0, "Sonoff devices", atomicState.SonoffDevices.size())
     }
     if (settings?.CBusDiscovery){
-        if (settings?.CBus_light != null) CB = settings?.CBus_light.size() else CB=0  // Elvis isnt in the house TODO
-            sumLog (CB, "C-Bus groups", atomicState.CBusLightDevices.size())
+        if (settings?.CBus_light != null) CBl = settings?.CBus_light.size() else CBl=0  // Elvis isnt in the house TODO
+            if (settings?.CBus_text != null) CBt = settings?.CBus_text.size() else CBt=0  // Elvis isnt in the house TODO
+            sumLog (CBl, "C-Bus groups", atomicState.CBusLightDevices.size())
+            sumLog (CBt, "C-Bus text", atomicState.CBusTextDevices.size())
     }
 	if (settings?.homieDiscovery){
             if (settings?.Homie_onoff != null) ho = settings?.Homie_onoff.size() else ho=0  // Elvis isnt in the house TODO
@@ -8743,8 +8803,13 @@ def zigbeeDev(payload,name, json) {
 }
 
 def CBusIn (payload,name,json) {
+
     group=payload[0]
-    CBus (name,group,"light")
+    //CBus (name,group,"light")
+}
+def CBusTextIn (payload,name,json) {
+    value=payload[0]
+    CBus (name,value,"temperature")  // assuming text are all temperature value FTTB
 }
 
 def zwave(payload,type, json) {
