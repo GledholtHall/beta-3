@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 25/9/2021 from 192.168.1.246  pre18
+// 29/9/2021 from 192.168.1.246  pre19
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -73,12 +73,12 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 18"
+    version="beta 3e pre 19"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
-    state.waiting = "none"
-    sendEvent (name: "waiting", value: "none")
+    state.waiting = "idle"
+    sendEvent (name: "waiting", value: "idle")
     subscribed=0
     sendEvent (name: "subscribes", value: ++subscribed)
 
@@ -98,7 +98,7 @@ def connect() {
     mqttState=interfaces.mqtt.isConnected()
     if (mqttState) {
         log ( "Connected to MQTT broker ${state.MQTTBroker}","BLUE")
-        subscribeTopic ('homie/'+state.normHubName+'/$heartbeat')
+        //subscribeTopic ('homie/'+state.normHubName+'/$heartbeat')
         parent.mqttStatus ("Connect")
         state.connectionAttempts = 0
         //state.seq2=0
@@ -180,7 +180,7 @@ boolean mqttConnect() {
             mqttState=mqttInt.isConnected()
             if (mqttState) {
                 mqttInt.publish("homie/${state.normHubName}/" + '$fw/client',"${version}",1,true)
-                mqttInt.subscribe ('homie/'+state.normHubName+'/$heartbeat')
+                //mqttInt.subscribe ('homie/'+state.normHubName+'/$heartbeat')
                 sendEvent (name: "presence", value: "present")
                 return (true)
              }
@@ -213,7 +213,7 @@ void mqttClientStatus(String message) {
         mqttState=interfaces.mqtt.isConnected()
         if (mqttState) {
             log ("MQTT broker connected","INFO")
-            subscribeTopic ('homie/'+state.normHubName+'/$heartbeat')
+            //subscribeTopic ('homie/'+state.normHubName+'/$heartbeat')
             sendEvent (name: "presence", value: "present")
             parent.mqttStatus(status)
         }
@@ -275,6 +275,7 @@ def subscribeTopic (String s) {
 def setStateWaiting (sw) {  // had to use this method as was not working when directly set above.
     state.waiting = sw
     sendEvent (name: "waiting", value: sw)
+    //log ("Attribute  " + mqtt.currentWaiting, "KH")
     return
 }
 
@@ -389,11 +390,18 @@ def parse(String description) {
 	def payload=payloadFull.split(',')
     //log (topicFull + "   " + payload, "INFO")
     //
-    
     if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
-        
+    if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
+    //if (device.currentWaiting=="idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<   
+    else if (device.currentValue("waiting", true) == "idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<
+
+    
+    ///##############   Think we still have to parse all messages that dont require a lookup eg /set etc   TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
+    ///    Just miss out discovery messages
+    
+    
     //#########################################################################################################################################################################
-    if (topicFull.startsWith(state.HAInTopic+'/')) {
+    else if (topicFull.startsWith(state.HAInTopic+'/')) {
         if (topic[3]=='config'){                 
             parent.HAIn(payloadFull,topic[1],topic,json)
             return
@@ -414,7 +422,7 @@ def parse(String description) {
     }
     //#########################################################################################################################################################################
     //#########################################################################################################################################################################
-    if (topicFull.startsWith(state.zigbee2mqttTopic)) {
+    else if (topicFull.startsWith(state.zigbee2mqttTopic)) {
         if (topic[1] == "bridge") parent.zigbee(payloadFull,topic[1],json)
         //else if parent.onoffEventP (topic[2],payload[0],topic[1])  // not passing update atm as always true ??
         else {  //REVISIT THIS LATER - have temporarily commented out line below
@@ -425,7 +433,7 @@ def parse(String description) {
         }
     //#########################################################################################################################################################################
     //#########################################################################################################################################################################
-    if (topicFull.startsWith(state.zwave2mqttTopic)) {
+    else if (topicFull.startsWith(state.zwave2mqttTopic)) {
         parent.zwave(payload,topic[1],json)
         return
         }
@@ -455,7 +463,7 @@ def parse(String description) {
         log ( "              " + rxMsg,"KH")
     }
 */
-     else if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
+
      else if (topic[0]==state.topic0){
         if ((topic[1]==state.topic1) || (state.topic1=='+')|| (state.topic1=='#')){
             if ((topic[2]==state.topic2) || (state.topic2=='+') || (state.topic2=='#')){
@@ -466,8 +474,11 @@ def parse(String description) {
             }
         }
     }
-    if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[2]=="group")) {  //CBus
+    else if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[2]=="group")) {  //CBus
         parent.CBusIn (payload,topic[1],json)
+    }
+    else if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[2]=="value")) {  //CBus
+        parent.CBusTextIn (payload,topic[1],json)
     }
     else if (topic[0]==state.HAStatestreamTopic) {  //HA
         if (topic[1]=='status') {  // HA LWT
