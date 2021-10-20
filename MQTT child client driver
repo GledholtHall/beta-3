@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 29/9/2021 from 192.168.1.246  pre19
+// 29/9/2021 from 192.168.1.237  pre20
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -375,7 +375,7 @@ def heartbeat (seqNum=0) {
 
 
 def bufferEmpty(i){
-    log  ("MQTT message queue idle","INFO")
+    log  ("MQTT message queue idle","TRACE")
 }
 
 
