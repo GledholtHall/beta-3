@@ -72,7 +72,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 19"){}
+            section("  ver:   beta 3e pre 20"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -546,7 +546,7 @@ assisted=false   // beta2 and beta3 .. disabling this feature temporarily as con
                             }
                             else {
                                 varCmd=varCmd+"${atomicState.attList[i]}_Cmd"
-                                app.updateSetting(varCmd,defTwo)  //KH
+                                if (defTwo!=null) app.updateSetting(varCmd,defTwo)  //KH
                                 if (!sensor) input(name: varCmd, type: "text", defaultValue: defTwo, title: "<b> ${atomicState.attList[i]}    </b> MQTT command topic", description: null, multiple: false, required: false, submitOnChange: true)         
                             }
 
@@ -896,7 +896,7 @@ def discovery() {  // can use atomicState vars in this section
         input "HAIn_cover", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInCoverDevices.size()} HA covers &nbsp &nbsp &nbsp [^${HAInco}]</b>", options: atomicState.HAInCoverDevices.sort()
         input "HAIn_lock", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInLockDevices.size()} HA locks &nbsp &nbsp &nbsp [^${HAInlo}]</b>", options: atomicState.HAInLockDevices.sort()
         input "HAIn_automation", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInAutomations.size()} HA automations &nbsp &nbsp &nbsp [^${HAInau}]</b>", options: atomicState.HAInAutomations.sort()
-        input "HAIn_person", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInPersonDevices.size()} HA persons &nbsp &nbsp &nbsp [^${HAInpe}]</b>", options: atomicState.HAInCoverDevices.sort()
+        input "HAIn_person", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInPersonDevices.size()} HA persons &nbsp &nbsp &nbsp [^${HAInpe}]</b>", options: atomicState.HAInPersonDevices.sort()
         input "HAIn_group", "enum", multiple: true, title: "<b>Discovered ${atomicState.HAInGroups.size()} HA groups &nbsp &nbsp &nbsp [^${HAIngr}]</b>", options: atomicState.HAInGroups.sort()
         }
    
@@ -1348,7 +1348,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 19',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 20',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -2936,7 +2936,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 19 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 20 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -3613,9 +3613,9 @@ def subscribeHADevices_friendlyNames1(){
     mqtt.unsubscribeTopic('homie/'+atomicState.normHubName+'/$pacing')
     mqtt.unsubscribeTopic(atomicState.HA+'/sensor/+/device_class') // // this creates device
 	mqtt.unsubscribeTopic(atomicState.HA+'/binary_sensor/+/device_class')// this creates device
-	log ("Adding HA switches and lights friendly names topics ", "INFO")
+	log ("Adding HA switches friendly names topics ", "INFO")
     mqtt.subscribeTopic(atomicState.HA+'/switch/+/friendly_name')
-    mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
+    //mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
     mqtt.subscribeTopic('homie/'+atomicState.normHubName+'/$pacing') 
     pacingSet("HAFriendly1End")
     //mqtt.publishMsg ('homie/'+atomicState.normHubName+'/$pacing',"HAFriendly1End",1,false) // this will arrive when all the friendly names have arrived 
@@ -3626,7 +3626,8 @@ def subscribeHADevices_friendlyNames2(){
     mqtt.unsubscribeTopic('homie/'+atomicState.normHubName+'/$pacing') 
     log ("Adding HA remaining friendly names topics ", "INFO")
     mqtt.unsubscribeTopic(atomicState.HA+'/switch/+/friendly_name')
-    mqtt.unsubscribeTopic(atomicState.HA+'/light/+/friendly_name')
+    log ("Adding HA lights friendly names topics ", "INFO")
+    mqtt.subscribeTopic(atomicState.HA+'/light/+/friendly_name')
 	mqtt.subscribeTopic(atomicState.HA+'/group/+/friendly_name')
     mqtt.subscribeTopic(atomicState.HA+'/person/+/friendly_name')
 	mqtt.subscribeTopic(atomicState.HA+'/input_boolean/+/friendly_name')
@@ -3654,6 +3655,7 @@ def subscribeHADevices_friendlyNames2(){
 def subscribeHASensorFriendly() {// This runs 10 secs after above currently
     mqtt = getChildDevice("MQTT: Child device driver")
     mqtt.unsubscribeTopic('homie/'+atomicState.normHubName+'/$pacing')
+    mqtt.unsubscribeTopic(atomicState.HA+'/light/+/friendly_name')
     mqtt.unsubscribeTopic(atomicState.HA+'/group/+/friendly_name')
     mqtt.unsubscribeTopic(atomicState.HA+'/person/+/friendly_name')
 	mqtt.unsubscribeTopic(atomicState.HA+'/input_boolean/+/friendly_name')
@@ -5326,7 +5328,7 @@ def sensorDevices(evt, name=null, type=null, state=null, device=null, multiple=f
         device=evt.getDevice()
 		state=evt.value
 		xType=evt.name  // attribute name
-		log ("[s] This got called by event ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${xType} ${evt.getDisplayName()}", "KH")
+		log ("[s] This got called by event ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${xType} ${evt.getDisplayName()}", "DEBUG")
 	} 
 	else {
 		xType=type
@@ -6954,19 +6956,19 @@ def sensorAction(child,devType,val,attr=null) {
     }
     if (attr=="humidity"){        
     //TODO Overly cautious sending the wrong command doesn't throw an error
-        if (child.hasCommand ("setHumidity")) child.setHumidity(val)
-        else if (child.hasCommand ("setRelativeHumidity")) child.setRelativeHumidity(val)
+        if (child.hasCommand ("setHumidity")) child.setHumidity(Float.parseFloat(val))
+        else if (child.hasCommand ("setRelativeHumidity")) child.setRelativeHumidity(Float.parseFloat(val))
     }
-    else if (attr=="temperature") child.setTemperature(val)        
-    else if (attr=="carbonDioxide") child.setCarbonDioxide(val)
+    else if (attr=="temperature") child.setTemperature(Float.parseFloat(val))        
+    else if (attr=="carbonDioxide") child.setCarbonDioxide(Float.parseFloat(val))
     else if (attr=="carbonMonoxide"){
         if (mapList[0] == val) child.CODetected()  //child.setCarbonMonoxide(val)
         else if (mapList[1] == val) child.COTested()   // doesnt exist ?? 
         else if (mapList[2] == val) child.COClear()  
     }
     else if (attr=="illuminance"){
-        if (child.hasCommand ("setLux"))child.setLux(val)
-        else child.setIlluminance(val)
+        if (child.hasCommand ("setLux"))child.setLux(Float.parseFloat(val))
+        else child.setIlluminance(Float.parseFloat(val))
 
     }
     else if (attr=="water"){
@@ -6996,7 +6998,7 @@ def sensorAction(child,devType,val,attr=null) {
         else if (mapList[1] == val) child.open()
     }
     else if (attr=="battery") { 
-        if (child.typeName=="MQTT Text") child.setBattery(val)  // only my MQTT Text device supports this
+        if (child.typeName=="MQTT Text") child.setBattery(Float.parseFloat(val))  // only my MQTT Text device supports this
         else if (child.typeName=="RM Connector Variable"){
              log ("$child appears to be a battery device - using a global variable to store the battery level [$val]","LOG")
             child.setVariable (val)
@@ -7004,7 +7006,7 @@ def sensorAction(child,devType,val,attr=null) {
     }
    else if (attr=="power") { 
        
-       if (child.hasCommand ("setPower")) child.setPower(val)
+       if (child.hasCommand ("setPower")) child.setPower(Float.parseFloat(val))
        else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
        else if (child.typeName=="RM Connector Variable")
            {
@@ -7014,7 +7016,7 @@ def sensorAction(child,devType,val,attr=null) {
     }
        else if (attr=="energy") { 
 
-        if (child.hasCommand ("setEnergy")) child.setEnergy(val)
+        if (child.hasCommand ("setEnergy")) child.setEnergy(Float.parseFloat(val))
         else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
         else if (child.typeName=="RM Connector Variable") {
            log ("$child appears to be an energy device - using a global variable to store the energy [$val]","LOG")
@@ -7023,7 +7025,7 @@ def sensorAction(child,devType,val,attr=null) {
     }
     else if (attr=="pressure") { 
 
-        if (child.hasCommand ("setPressure")) child.setPressure(val)
+        if (child.hasCommand ("setPressure")) child.setPressure(Float.parseFloat(val))
         else if (child.typeName=="MQTT Text") child.setText(val)  // only my MQTT Text device supports this
         else if (child.typeName=="RM Connector Variable"){
             log ("$child appears to be a pressure device - using a global variable to store the pressure [$val]","LOG")
