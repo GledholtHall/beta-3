@@ -73,7 +73,7 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 19"
+    version="beta 3e pre 21"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
@@ -393,7 +393,7 @@ def parse(String description) {
     if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
     if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
     //if (device.currentWaiting=="idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<   
-    else if (device.currentValue("waiting", true) == "idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<
+    // else if (device.currentValue("waiting", true) == "idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<
 
     
     ///##############   Think we still have to parse all messages that dont require a lookup eg /set etc   TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
