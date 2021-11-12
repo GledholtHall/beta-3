@@ -1,4 +1,4 @@
-// 05/10/2021 from 192.168.1.237 - beta 3e pre20
+// 12/11/2021 from 192.168.1.3 - beta 3e pre21
 
 /*
  
@@ -72,7 +72,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 20"){}
+            section("  ver:   beta 3e pre 21"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -1348,7 +1348,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 20',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 21',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -2936,7 +2936,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 20 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 21 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -6545,20 +6545,25 @@ def LookupManual (param,message,topic,json) {
     deviceID=topic
     if (json=="true") json=true else json=false   
     found=false
+    nested=false
     if (json){
         list=[]
+        log ("Message is $message","KH")
         jsonVal=parseJson(message)   // There is no evt BUG ??
         for (e in jsonVal) {
             // TODO handle single level nested JSON but currently no more
             // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
             jValue="${e.value}"
             jKey="${e.key}"
-       log ("json: ${e.key} :      ${e.value}","LOG")
+      // log ("json: ${e.key} :      ${e.value}","LOG")
             nested=false
             if (jValue.startsWith('[') && jValue.endsWith(']')) {
-       log ("This has a nested json payload ${jValue}","LOG")
+       //log ("This has a nested json payload ${jValue}","LOG")
                 nested=true
-                jNested1=jValue.toString()
+                jNested1=jValue.toString()                                           
+                jNested1='{' + jNested1.substring(1, jNested1.length() - 1) + '}';  // e.g.  {state:idle}  and parseJson expects {"state":"idle"} //hmm
+                jNested1=jNested1.replace(":", "\":\"")  // re-form json payload
+                log ("JNested1 is $jNested1","KH")
             }
             jsonTopic=deviceID+"{${e.key}:}"
             list=checkTopicLink (jsonTopic)
@@ -6573,21 +6578,21 @@ def LookupManual (param,message,topic,json) {
                }
             }
             if (nested==true) {
+          // nested example at zigbee2mqttBlue/Sengled Kitchen Table  MQTT: Json Message is {"brightness":185,"color_temp":370,"linkquality":154,"state":"OFF","update":{"state":"idle"},"update_available":false}       
          log ("Checking 2nd level json $jNested1", "LOG")
-      // log ("Size is $jValue.size()", "LOG")   
-                jsonVal2=parseText(jValue)    
+                jsonVal2=parseJson(jNested1)  
                 for (f in jsonVal2) {
                     // TODO handle single level nested JSON but currently no more
                     // format is topic1/topic2/topic3{json1:{json2:}}  or {json1:{json2:}} ???
                     jValue="${f.value}"
                 jKey="${f.key}"
-      // log ("json2: ${f.key} :      ${f.value}","LOG")
+       log ("json2: ${f.key} :      ${f.value}","LOG")
                 }
 
       // log ("jValue is " + jValue[1] , "LOG")
       // log ("jValue is " + jValue.Temperature , "LOG")
 
-                jsonTopic=deviceID+"{${e.key}:{Temperature:}}"
+                jsonTopic=deviceID+"{${e.key}:{Temperature:}}"    // TODO old  NOT checking correctly now
                 list=checkTopicLink (jsonTopic)
                 if (list.size>0) {
        log ("Found $jsonTopic", "LOG")
@@ -7911,6 +7916,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 }
 
 def updateTopicLink (name, topic, devID){ 
+    log ("UD topicLink $name $topic $devID","KH")
                              if(topicLink.containsKey(topic)){ 
                                  list=topicLink[topic]       //.add(topic)
                                 if (list.contains(devID)) {
