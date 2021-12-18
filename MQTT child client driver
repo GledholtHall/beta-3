@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 29/9/2021 from 192.168.1.237  pre21
+// 29/9/2021 from 192.168.1.237  pre22
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -392,9 +392,7 @@ def parse(String description) {
     //
     if (payloadFull.startsWith('{') && payloadFull.endsWith('}')) json="true" else json="false"
     if (topicFull.startsWith('homie/'+state.normHubName+'/$pacing')) parent.pacing(payload[0])
-    //if (device.currentWaiting=="idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<   
-    // else if (device.currentValue("waiting", true) == "idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<<
-
+    //if (device.currentWaiting=="idle") parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call   // NEW.. TO CHECK ############ <<<<<<<< 
     
     ///##############   Think we still have to parse all messages that dont require a lookup eg /set etc   TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO 
     ///    Just miss out discovery messages
@@ -514,7 +512,7 @@ def parse(String description) {
 			}			
 			else if (topic[1]=='binary_sensor') {
 				if (topic[3]=='state'){
-                parent.inputBooleanEventP(topic[2],deQuote(payload[0]),topic[1])   
+                parent.inputBooleanEventP(topic[2],deQuote(payload[0]),topic[1],topicFull)   
 				return
 				}
 				else if (topic[3]=='friendly_name'){
@@ -696,7 +694,7 @@ def parse(String description) {
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
                 parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
-				log ("Received this " + payload + "  " + payload.size(), "TRACE")
+				log ("Received this " + payload + "  " + payload.size(), "KH")
                 return					
 			}
         }      
