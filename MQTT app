@@ -3168,7 +3168,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         sCoverTopic="homie/${atomicState.normHubName}/${normName}"+'/window'
         sCover2Topic="homie/${atomicState.normHubName}/${normName}"+'/door'
         pState = ',"state_topic":"'+ sCover2Topic + '"'
-        pCmd = ',"command_topic":"'+ sCoverTopic + '/set"'
+        pCmd = ',"command_topic":"'+ sCover2Topic + '/set"'
         pCLOSE = ',"payload_close":"close"' //default for booleans in homie
         pOPEN = ',"payload_open":"open"'
         pSTOP = ', "payload_stop": null '
@@ -5148,7 +5148,7 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
             }
            else if (xType=='contact'){  //TODO
 				category='contact'
-                settable="true"
+                settable="false"
                 dType='contact'
                 HAtype="binary_sensor"
                 mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,close,closed]',1,true,atomicState.suppress)
@@ -5164,10 +5164,10 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
             }
            else if (xType=='door'){  //TODO
 				category='door'
-                settable="false"
+                settable="true"
                 dType='door'
                 HAtype="cover"  // TODO has 4 values inc closing opening
-                mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,closed,opening,closing]',1,true,atomicState.suppress)
+                mqtt.publishMsg (sTopic+'/'+category+'/$format','[open,close,closed,opening,closing]',1,true,atomicState.suppress)
                 mqtt.publishMsg (sTopic+'/'+category+'/$datatype',"enum",1,true,atomicState.suppress)
             }
             else if ((xType=='position')||(xType=='level')){  //TODO  some windowshades dont have a position attribute
