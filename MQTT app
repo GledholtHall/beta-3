@@ -1415,7 +1415,7 @@ def initialize() {
 	if(settings?.homieDiscovery && settings?.homieRunEvery) {
         mqtt.publishMsg ('homie/'+atomicState.normHubName+'/$discovery',"homie",1,true)
         atomicState.startupDiscovery='running'
-        runIn(atomicState.delay,  " homieDiscovery")
+        runIn(atomicState.delay,  "homieDiscovery")
 		//runIn(atomicState.delay,  "subscribeHomieTopic")
 		//runIn(atomicState.delay,  "subscribeHomieStateTopics")  
         //runIn (atomicState.delay, "subscribeHomieNameTopics")
