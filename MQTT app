@@ -1,4 +1,4 @@
-// 25/JAN/2022 from 192.168.1.3 - beta 3e pre24a
+// 25/JAN/2022 from 192.168.1.3 - beta 3e pre24b
 
 /*
  
@@ -72,7 +72,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 24a"){}
+            section("  ver:   beta 3e pre 24b"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -1348,7 +1348,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 24a',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 24b',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -4176,14 +4176,17 @@ def switched(evt, name=null, type=null, state=null, device=null) {
             //log ("Blocking Event (switched): $device.displayName","KGREEN")
             return
         }
-        name=evt.displayName
+        name=normalize(evt.displayName)
 		state=evt.value
+        if (state=='off') bState='false'
+        else if (state=='on') bState='true'
+        else bState='none'
 		xName=evt.name
         // need to determine if MQTT caused this or HE
-
-        if (lastDev== "$name [$state]") {
+        log ("lastDev is $lastDev compare $name [$bState]","TRACE")
+        if (lastDev== "$name [$bState]") {
             lastDev=''
-            log("switched Wiping lastdev","LOG")
+            log ("Blocking _cmd (onoff/set) back to MQTT","INFO")
         }
         else {
             dType = device.getTypeName()
@@ -4259,7 +4262,7 @@ def mqttPublishMsg(topic,payload,num,retain) {
 
 def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do we pass devType in here ??
 	mqtt = getChildDevice("MQTT: Child device driver")
-
+    log ("SWITCHEDDIM called for $name","KH")
     if (evt!=null)
 	{
 		device=evt.getDevice()
@@ -4269,14 +4272,14 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
             //log ("Blocking Event (switchedDim): $device.displayName","KGREEN")
             return
         }
-        name=evt.displayName
+        name=normalize(evt.displayName)
 		state=evt.value
 		xName=evt.name
 		log("Event: Device is SwitchedDim ${state}  ${name} ${xName}", "TRACE")
         //if (lastDev== "$name [$state]") lastDev=''
         if (lastDev== "$name [$state]") {
             lastDev=''
-            log("switchedDim Wiping lastdev","TRACE")
+            log ("Blocking _cmd (switchedDim /set) back to MQTT","WARN")
         }
         
         else {
@@ -4361,16 +4364,19 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
 	if (evt!=null)
 	{
 	    device=evt.getDevice()
-            log ("dimmed from $device","KH")
+            log ("dimmed from $device  lastDev is $lastDev","KH")
         if (block==device.displayName){
             //log ("Blocking Event (switchedDim): $device.displayName","KGREEN")   
             return
         }
-        name=evt.displayName
+        name=normalize(evt.displayName)
 		state=evt.value
 		xName=evt.name
-		log ("Event: Device dimmed ${state}  ${name}", "TRACE")
-        if (lastDev== "$name [$state]") lastDev=''
+		log ("Event: Device dimmed   ${name} [${state}]", "TRACE")
+        if (lastDev== "$name [$state]") {
+            lastDev=''
+            log ("Blocking _cmd (dim/set) back to MQTT","INFO")
+        }
         else {
             dType = device.getTypeName()
             if (dType.startsWith("Virtual")) // only allow commands to MQTT from virtuals
@@ -6890,7 +6896,8 @@ def onoffEventP (name,status,type) {
     
     //def data = parseJson(evt.data)
     //log ("event data: ${data}", "INFO")
-	log ("Received an OnOff event from $name turned $status", "TRACE")
+	log ("Received a homie OnOff event from $name turned $status", "INFO")
+    lastDev= "$name [$status]"
 	child=getChildDevice("MQTT:homie_"+name)  // for homie devices   
     if (child==null) child=getChildDevice("MQTT:HA_[" + type +"]_" + name)  //TODO check this method is only for HA devices ..  
 	if (child != null) log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "DEBUG")
@@ -6903,6 +6910,7 @@ def onoffEventP (name,status,type) {
     myOFF = child.getDataValue("switch_OFF")
     myMap = child.getDataValue("switch_MAP")
     try{
+atomicState.setOrigin="MQTT"
         if (myMap != null) {
             mapList=stringToList(myMap) // [on,off]
             if (mapList[0] == status) child.on()
@@ -6912,6 +6920,7 @@ def onoffEventP (name,status,type) {
         else if (status==myON)  child.on()
     }
     catch (e) {
+atomicState.setOrigin="NA"
         log ("Failed to control onoff device $name" + e,"WARN")
     }
     
@@ -6929,7 +6938,8 @@ def formatP (name,format) {
      
 } 								  
 def dimEventP (name,level,type,max) {
-    log ("Received a dim event from $name level $level is $type", "KH")
+    log ("Received a homie dim event from $name level $level is $type", "INFO")
+    lastDev= "$name [$level]"
 	child=getChildDevice("MQTT:homie_"+name)
     if (child==null) child=getChildDevice("MQTT:HA_[" + type+"]_"+name)
     if (child==null) {
@@ -6939,7 +6949,9 @@ def dimEventP (name,level,type,max) {
     //log  ("Got " + child + " [" + + child.getSupportedAttributes().size() + "] " + child.getSupportedAttributes(), "KH")
     myMax = child.getDataValue("max_Level")   //TODO need to scale here
 	log ("Setting Child dim level to $level", "KH")
-    child.setLevel(level.toInteger(),1) 
+atomicState.setOrigin="MQTT"
+    child.setLevel(level.toInteger(),1)
+
 }
 
 def HASensorEventP(name,payload,type,bool) {
