@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 29/9/2021 from 192.168.1.237  pre22
+// 2/Feb/2022 from 192.168.1.3  pre25
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -73,7 +73,7 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 21"
+    version="beta 3e pre 25"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
@@ -383,7 +383,6 @@ def parse(String description) {
     runIn (30, "bufferEmpty")
     state.msgIn++
     topicFull=interfaces.mqtt.parseMessage(description).topic
-
 	def topic=topicFull.split('/')
 	def topicCount=topic.size()
     def payloadFull=interfaces.mqtt.parseMessage(description).payload
@@ -472,12 +471,17 @@ def parse(String description) {
             }
         }
     }
-    else if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[2]=="group")) {  //CBus
-        parent.CBusIn (payload,topic[1],json)
+    else if ((topicCount==6)&&(topic[0]==state.CBusTopic)) {  //CBus
+        // e.g. cbus2/read/254/56/Courtyard Corner/level
+        //                        ^^^^^^^^^^^^^^^^ ^^^^^
+        parent.CBusIn (topic[4],topic[5],payload,topicFull)
     }
-    else if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[2]=="value")) {  //CBus
+
+/*
+    else if ((topicCount==3)&&(topic[0]==state.CBusTopic)&&(topic[5]=="level")) {  //CBus
         parent.CBusTextIn (payload,topic[1],json)
     }
+*/
     else if (topic[0]==state.HAStatestreamTopic) {  //HA
         if (topic[1]=='status') {  // HA LWT
 				if (payload[0]=="online") {
@@ -512,7 +516,7 @@ def parse(String description) {
 			}			
 			else if (topic[1]=='binary_sensor') {
 				if (topic[3]=='state'){
-                parent.inputBooleanEventP(topic[2],deQuote(payload[0]),topic[1],topicFull)   
+                    parent.inputBooleanEventP(topic[2],deQuote(payload[0]),topic[1],topicFull)   
 				return
 				}
 				else if (topic[3]=='friendly_name'){
@@ -813,8 +817,8 @@ def parse(String description) {
     }
 	else {  // unhandled parse messages arrive here
         top=interfaces.mqtt.parseMessage(description).topic
-        if (json=="true")  log ("Ad hoc MQTT parse  $top       "+payloadFull, "DEBUG")
-        else log ("ad hoc MQTT parse  $top       ${payload[0]}", "DEBUG")
+        if (json=="true")  log ("Ad hoc MQTT parse  $top       "+payloadFull, "WARN")
+        else log ("ad hoc MQTT parse  $top       ${payload[0]}", "WARN")
         parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
 	}
     json="false"
