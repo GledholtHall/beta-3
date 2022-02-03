@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 2/Feb/2022 from 192.168.1.3  pre25
+// 3/Feb/2022 from 192.168.1.3  pre 26
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -73,7 +73,7 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 25"
+    version="beta 3e pre 26"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
@@ -743,10 +743,6 @@ def parse(String description) {
             parent.formatP (topic[2], payload[0])   // ,interfaces.mqtt.parseMessage(description).topic)
             return
 		}
-        else if (topic[3]=="$properties") {
-            
-            log ("New $properties discovery" + interfaces.mqtt.parseMessage(description).payload + " for " + topic, "LOG")
-        }
 		else if (topic[3]=='$type') {
 			switch (payload[0]) {
 				case 'switch':
@@ -760,6 +756,7 @@ def parse(String description) {
                     parent.homieDimDev (topic[2],'dim')
 					break
 				case 'sensor':
+                    log ("Sensor call is for " + topic[2], "LOG")
                     parent.homieSensorDev (topic[2],'sensor')
 					break
 				case 'thermostat':
@@ -773,7 +770,7 @@ def parse(String description) {
                     break
                  case 'lock':
                     parent.homieLockCapability (topic[2],'lock')
-                    break                
+                    break   
 				default:			
                     parent.homieUnknownDev (topic[2],payload[0])
 					break
@@ -785,6 +782,12 @@ def parse(String description) {
             parent.LabelDeviceP ("MQTT:homie_"+topic[2],payload[0])
             return
 		 }
+        else if (topic[3]=='$properties') { 
+            //parent.LabelDeviceP ("MQTT:homie_"+topic[2],payload[0])
+            //parent.LabelDeviceP (topic[2],payload[0])
+            parent.homieProperties (topic[2],payload)
+            return
+		 }
         else if (topicCount==5)
             {
             if (topic[4]=='$unit') { 
@@ -792,7 +795,8 @@ def parse(String description) {
 			log("Received homie UOM from MQTT ${topic[2]} " + status, "TRACE")
 		 }
          }
-        else log ("Unhandled" + topic,"KH")
+        else parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+
 	} // end remote homie
     
     else if (topic[0]=='shellies')
