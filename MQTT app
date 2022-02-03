@@ -1,4 +1,4 @@
-// 2/Feb/2022 from 192.168.1.3 - beta 3e pre25
+// 3/Feb/2022 from 192.168.1.3 - beta 3e pre26
 
 /*
  
@@ -75,7 +75,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 25"){}
+            section("  ver:   beta 3e pre 26"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -639,7 +639,6 @@ def synchDiscoveries() {
     mqtt = getChildDevice("MQTT: Child device driver")
     if ((settings?.CBusDiscovery == true)  && (settings?.CBusTopic != '') && (settings?.CBusTopic != null))
     {
-        mqtt = getChildDevice("MQTT: Child device driver")
         mqtt.setCBusTopic(settings?.CBusTopic)
         numEnabled=0
         if (settings.CBus_light!=null) numEnabled += settings?.CBus_light.size()
@@ -679,7 +678,8 @@ def synchDiscoveries() {
 
         	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$name')
 */
-        
+                    log ("setting homie 3 device to " + settings?.homieDevice,"KH")
+            mqtt.setHomieDevice(settings?.homieDevice)
             settings?.Homie_onoff.each {val -> 
                 log ("homie onoff Name is " + val, "KH")                   
                 mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$type') 
@@ -705,6 +705,19 @@ def synchDiscoveries() {
                 mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$type')
                 //mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$properties')
             }
+             settings?.Homie_lock.each {val -> 
+                log ("homie Lock Name is " + val, "KH")                   
+                mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$type')
+                //mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$properties')
+            }
+    /*
+            settings?.Homie_unknown.each {val -> 
+                log ("homie variable Name is " + val, "KH")                   
+                mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$type')
+                //mqtt.subscribeTopic('homie/'+atomicState.homie+"/$val/"+'$properties')
+    */
+
+ 
 
 
 
@@ -934,7 +947,11 @@ def discovery() {  // can use atomicState vars in this section
 			numText="disabled"
 		}
 
-        
+/*    section (Virtual Device Creation option")[
+             input "virtualDevs", "bool", title: "<b>Create sensors using matching Virtual Devices rather than MQTT Text ? <br> (MQTT Text provides a battery attribute) </b>", required: true, defaultValue: false, submitOnChange: true
+             }
+*/
+             
     section (homieEnabled+"<b>homie</b>    <br>     [${numText}]</font>", hideable: true, hidden: true, submitOnChange: true){
         if (settings?.Homie_onoff != null) ho = settings?.Homie_onoff.size() else ho=0  // Elvis isnt in the house TODO
         if (settings?.Homie_dim != null) hd = settings?.Homie_dim.size() else hd=0
@@ -946,6 +963,7 @@ def discovery() {  // can use atomicState vars in this section
     	input "homieDiscovery", "bool", title: "<b>homie 3 protocol<b>", required: true, defaultValue: false, submitOnChange: false
         input "homieRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
         input "RunhomieDiscovery", "button", title: "Run homie Discovery now"
+                         input "virtualDevs", "bool", title: "<b>Create sensors using matching Virtual Devices rather than MQTT Text (loses battery attribute)  ?</b>", required: true, defaultValue: false, submitOnChange: false
 		input name: "homieDevice", type: "text", title: "<b>homie device topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false, submitOnChage: true
 		input "ClearhomieDiscovery", "button", title: "Clear discovered devices in dropdown lists" //, these can be recreated but the enabled device status is lost"
         input "DeletehomieDiscoveryDevices", "button", title: "Delete enabled devices from HE" //, these can be recreated as long as the enabled status is present
@@ -1196,6 +1214,7 @@ def appButtonHandler(btn) {
     }
     else if (btn=="RunhomieDiscovery") {
         atomicState.homie=settings?.homieDevice
+
         if ((settings?.homieDiscovery == true) &&(settings?.homieDevice != '') && (settings?.homieDevice != null))  homieDiscovery()
     }
     else if (btn=="Runzigbee2mqttDiscovery") {
@@ -1627,7 +1646,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 25',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 26',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -2141,6 +2160,7 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
     estStartup= atomicState.delay + (count/3)
     atomicState.timeStamp=now()
     log ("Starting HE device publishing to MQTT for ${count} HE devices with ${attCount} attributes","BLUE")
+            log ("setting homie 2 device to " + settings?.homieDevice,"KH")
     if (settings?.homieDevice) mqtt.setHomieDevice(settings?.homieDevice)
 	count=0
 }
@@ -2995,7 +3015,6 @@ def synchDevices() {
             }
     }
         
-
 	if (publishList.size() != 0) {
     log(">>>>>>>>>>>>>>>>>>>>>   Publish List is $publishList","LOG")
     //publishList.each {k, v -> HADiscoveryAdvertise(v[0],v[1],v[2], k) }
@@ -3003,20 +3022,20 @@ def synchDevices() {
 }
 
 
-def devLoop(deviceList, attribute, handler, type='none'){  // This registers a single 'named' attribute for a device  
+def devLoop(deviceList, attribute, handler, type='none'){  // This registers a single 'named' attribute for a device 
+    if (deviceList==null) return
         mqtt = getChildDevice("MQTT: Child device driver")
 		deviceList.each{ dev->
-            
+            //isMQTT=dev.getDataValue("mqtt")
+            if (dev.getDataValue("mqtt")!=null) {
+                log ("$dev: this is an MQTT Discovered device so don't expose it as an HE one ","WARN")
+                return
+            }
 			mydName = dev.displayName
 			myName = dev.displayName
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
-
-            
-            
-            
-            
                 def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
             if (type == 'none') type=attribute
 			if(dev.currentValue(attribute)!=null){
@@ -3047,6 +3066,22 @@ def devLoopAll(dev, attribute, handler, type='none'){  // This registers all att
 //		deviceList.each{ dev->
 			mydName = dev.displayName
 			myName = dev.displayName
+        
+        
+            log ("LoopAll dev is myName","WARN")
+            isMQTT=dev.getDataValue("mqtt")
+            log ("isMQTT is $isMQTT","ERROR")
+            if (isMQTT!=null) {
+                log ("$dev: this is an MQTT device so don't expose ","KH")
+                return
+            }
+        
+        
+        
+        
+        
+        
+        
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
@@ -3818,6 +3853,7 @@ def start_HADiscovery(evt){
 }
 
 def unsubscribeCBusEvents(msg=true){
+    mqtt = getChildDevice("MQTT: Child device driver")
     if (msg) {
         time=(int) ((now()-atomicState.timeStamp)/1000) 
         log ("========== C-Bus Discovery has completed in $time secs  ==========","BLUE")
@@ -3829,9 +3865,12 @@ def unsubscribeCBusEvents(msg=true){
 }
 
 def homieDiscovery() {
+        mqtt = getChildDevice("MQTT: Child device driver")
+        log ("setting homie device to " + settings?.homieDevice,"KH")
+        mqtt.setHomieDevice(settings?.homieDevice)
     	runIn(1, "subscribeHomieTopic")
 		runIn(1, "subscribeHomieStateTopics")  
-        runIn(1, "subscribeHomieNameTopics")
+        runIn(10, "subscribeHomieNameTopics")
 }
 
 def unsubscribehomieEvents(msg=true) {
@@ -6377,8 +6416,22 @@ def homieVariableDev(name,type) {
 	}
 		if ((settings?.Homie_variable != null) && (settings?.Homie_variable.contains (name))) createChildDevice (name, "variable", "homie", name)
 }
+def homieSensorDevAdd(name,type,fName=null,dType="MQTTText") {
 
-def homieSensorDev(name,type) {  //TODO merge with above
+    log ("homie Sensor device create for $name  $type  $fName  $sType", "KH")
+    if ((settings?.Homie_sensor != null) && (settings?.Homie_sensor.contains (name))) {
+        log ("Creating homie sensor $name","KH") 
+        // def createChildDevice(name, type, system, friendlyName=null, dType='default',seq=0, config=null)
+        createChildDevice (name, "sensor", "homie", fName, dType)
+    }
+
+}
+    
+
+def homieSensorDev(name,type,extra=null,dType=null) {  //TODO merge with above
+    log ("Managing dropdown for homie sensor $name","LOG")
+    log ("Sensor for $name  $type  $extra  $sType  (not creating) ", "LOG")
+    if (extra==null) extra=name
 	temp = atomicState.sensorDevices
 	if (temp==null) temp=[]
 	if (temp.contains(name)) {
@@ -6389,8 +6442,50 @@ def homieSensorDev(name,type) {  //TODO merge with above
 		temp.add(name)
 		atomicState.sensorDevices = temp
 	}
-	if ((settings?.Homie_sensor != null) && (settings?.Homie_sensor.contains (name))) createChildDevice (name, "sensor", "homie", name)
 }
+
+
+def homieProperties(name,props) {
+    log ("Properties for $name   $props", "KH")
+    temp = atomicState.sensorDevices
+    if (temp==null) {
+        log ("No enabled sensors","LOG")
+        return 
+    }
+	if (temp.contains(name))  {
+        log ("Found an enabled Sensor and creating a device ","KH")
+        
+        props.each {pType ->
+            //if (pType='battery') log ("yjis has a battery indicator","LOG")
+            log ("This has a $pType sensor", "LOG")
+        }
+        if (settings?.virtualDevs)  homieSensorDevAdd (name,'homie',name, "MQTTText")  // default dType
+         else homieSensorDevAdd (name,'homie',name,"temperature")  // 
+        
+        return
+    }
+    else log ("Not a known Sensor","LOG")
+}
+/*
+def homieName(name,fName) {
+    log ("Friendly name for $name is $fName", "KH")
+    temp = atomicState.sensorDevices
+    if (temp==null) {
+        log ("No enabled sensors","LOG")
+        return 
+    }
+	if (temp.contains(name))  {
+        log ("Found a known Sensor to rename","KH")
+        return
+    }
+    else log ("Not a fName for a known Sensor","LOG")
+}
+*/
+
+def homieUOM (name,uom) {
+
+    log ("homie UOM for $name is $uom","KH")
+         }
 
 def homieUnknownDev(name,type) { //TODO merge
     atomicState.homieUnknownDevices=[]
@@ -7568,13 +7663,13 @@ def normalize2(name) {
 def LabelDeviceP(dID,label) {   // rename to reNameDevice ??
 		child=getChildDevice(dID)
 	    if (child == null) {
-		log ("reName: Child doesn't exist (no state or unsupported type ?) "+ dID + " " + label , "TRACE")
+		log ("reName: Child doesn't exist (no state or unsupported type ?) "+ dID + " " + label , "LOG")
 		return  
        }
 	child.label= label
-	log ("reNamed  $child.displayName to $label" ,"TRACE")
+	log ("reNamed  $child.displayName to $label" ,"LOG")
 }
-
+sensor
 def MD5(String s){
     if (s==null) s="123"
     MessageDigest.getInstance("MD5").digest(s.bytes).encodeHex().toString()
@@ -7884,7 +7979,8 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         //devType= "RM Connector Variable"
         //if (dType=="default") devType= "RM Connector Variable"  // changing this default to a variable as Omni is problematic
         devType= "MQTT Text"
-        if (dType=="default") devType= "MQTT Text"  
+        if (dType=="default") devType= "MQTT Text"
+        // else  devType == dType 
         if (system=='HADisc') {
           devClass=null
           uom=null
@@ -7918,6 +8014,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         else if (dType=="audioVol") devType= "Virtual audioVolume"
         else if (dType=="battery") devType= "RM Connector Variable"  // there is no battery variable device
         else if (dType=="battery") devType="MQTT Text"  //UKUSA namespace
+        else if (dType=="battery+sensor") devType="MQTT Text"  //UKUSA namespace    
         else if (dType=="button") devType= "Virtual Button"    
         else if (dType=="cold") devType= "Virtual Contact Sensor"
 		else if (dType=="connectivity") devType= "virtual Contact Sensor"
@@ -7944,13 +8041,20 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 		else if (dType=="safety") devType= "Virtual Contact Sensor"
         else if (dType=="smoke") devType= "Virtual Smoke Detector"
 		else if (dType=="sound") devType= "Virtual audioVolume"  // check think this is not boolean
-        else if (dType=="temperature") devType= "Virtual Temperature Sensor"  // check think this is not boolean           
+        else if (dType=="temperature") devType= "Virtual Temperature Sensor" 
         else if (dType=="variable") devType= "RM Connector Variable"
         //else if (dType=="vibration") devType= "Virtual Motion Sensor"
         else if (dType=="vibration") devType= "Generic Glass Break Detector"
         else if (dType=="window") devType= "Virtual Contact Sensor"
-        else  log (name + " found no device type mapping for ==$dType== " + dType + '  ' +  devType,"WARN")
+            else  {
+                log (name + " found no device type mapping for ==$dType== " + dType + '  ' +  devType,"WARN")
+            }
 	}
+    if (attrData == null) {
+        attrData=dType 
+        log ("WARN guessing the attribute for $devType as $dType   TODO lookup  TODO","WARN")
+    }
+    
 	// ######  This is where to add additional device types and their matching driver ######			 
 	else {
 			log ("Skipping creating device " + name +" as no type yet for " + type, "WARN")
@@ -7970,14 +8074,34 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 			    atomicState.count++			
 			    childrenCount = getChildDevices().size()
                 child.updateSetting("txtEnable",[value:false, type:"bool"])
+    
 				if (system=='homie'){
-                            child.updateDataValue("switch_Topic",'homie/'+atomicState.homie+'/'+name+'/onoff')
-                            child.updateDataValue("switch_Cmd",'homie/'+atomicState.homie+'/'+name+'/onoff/set')
+                    child.updateDataValue("mqtt",'enabled')
+                    child.updateDataValue("origin",'homie')	 
+                    if (devType == "MQTT Text") {
+                        child.updateDataValue("battery_Topic",'homie/'+atomicState.homie+'/'+name+'/battery')
+                        child.updateDataValue("text_Topic",'homie/'+atomicState.homie+'/'+name+'/temperature')                        
+                        }
+
+                     // Partial - needs work TODO      
+                    if (attrData=='switch') {
+                        child.updateDataValue("switch_Topic",'homie/'+atomicState.homie+'/'+name+'/onoff')
+                        child.updateDataValue("switch_Cmd",'homie/'+atomicState.homie+'/'+name+'/onoff/set')
                             //child.updateDataValue("switch_ON","true")                                             // ##### ToDo dont do this if already has a value (shouldnt happen as new device)
                             //child.updateDataValue("switch_OFF","false")
                             child.updateDataValue("switch_MAP","[true,false]")
-                            child.updateDataValue("mqtt",'enabled')
-                            child.updateDataValue("origin",'homie')															   
+                        }
+                    if (attrData=='level') {
+                        child.updateDataValue("switch_Level",'homie/'+atomicState.homie+'/'+name+'/dim')
+                        child.updateDataValue("switch_Level",'homie/'+atomicState.homie+'/'+name+'/dim/set')
+                            //child.updateDataValue("switch_ON","true")                                             // ##### ToDo dont do this if already has a value (shouldnt happen as new device)
+                            //child.updateDataValue("switch_OFF","false")
+                            child.updateDataValue("max_Level","100")   //  Need fixing
+                        }
+                    else {  // need to extract the right attribute here for virtual sensors for example
+                        dataValue = attrData + "_Topic"
+                        child.updateDataValue(dataValue,'homie/'+atomicState.homie+'/'+name+'/'+attrData)
+                    }
 																												
 				}
             	else if (system=="HA"){
