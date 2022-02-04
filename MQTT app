@@ -1,4 +1,4 @@
-// 4/Feb/2022 from 192.168.1.3 - beta 3e pre 26a
+// 4/Feb/2022 from 192.168.1.3 - beta 3e pre 27
 
 /*
  
@@ -75,7 +75,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 26a"){}
+            section("  ver:   beta 3e pre 27"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -678,7 +678,6 @@ def synchDiscoveries() {
 
         	mqtt.subscribeTopic('homie/'+atomicState.homie+'/+/$name')
 */
-                    log ("setting homie 3 device to " + settings?.homieDevice,"KH")
             mqtt.setHomieDevice(settings?.homieDevice)
             settings?.Homie_onoff.each {val -> 
                 log ("homie onoff Name is " + val, "KH")                   
@@ -1646,7 +1645,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 26a',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 27',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -1832,15 +1831,13 @@ def abort (where) {
 
 def addProperty(key,value,device=null) {
     att=value  
-
-    
+    dOrigin=device.getDataValue("origin")
     mqtt = getChildDevice("MQTT: Child device driver")
     if (properties[key] == null) {
         if (att=='ramp') log ("key was null for $device[$value]","KH")
         properties[key] = value
-        if (device!=null)   device.updateDataValue("properties", value)
-        if (device.getDataValue("origin")=='user') return
-        else mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)
+        device.updateDataValue("properties", value)
+        if (dOrigin==null) mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)
     }
     else {
         if (properties[key].contains (value)){
@@ -1849,9 +1846,9 @@ def addProperty(key,value,device=null) {
     properties[key] = properties[key] + "," + value
     value=properties[key]
     //if (att=='ramp') log ("Updating property data value $device[$value]","KH")
-    if (device!=null)   device.updateDataValue("properties", value) //value)
+    device.updateDataValue("properties", value) //value)
     //mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true,atomicState.suppress)
-    mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)        
+    if (dOrigin==null) mqtt.publishMsg (key+'/$properties',"${properties[key]}",1,true)        
     }
 } 
 
@@ -2160,7 +2157,6 @@ def deviceSubscribes(count) {  // TODO check - Here I might only have enabled on
     estStartup= atomicState.delay + (count/3)
     atomicState.timeStamp=now()
     log ("Starting HE device publishing to MQTT for ${count} HE devices with ${attCount} attributes","BLUE")
-            log ("setting homie 2 device to " + settings?.homieDevice,"KH")
     if (settings?.homieDevice) mqtt.setHomieDevice(settings?.homieDevice)
 	count=0
 }
@@ -2270,7 +2266,8 @@ def registerEventHandler (dev) {  //registers an event handlers for every capabi
 def registerAll (devList,count,handlerReq='auto') {  //registers handlers for every capability and attribute a device has
     //  a variable or text (MQTT Text) attribute will not get registered as it has no matching capability !
         changes=true
-        devList.each { dev ->
+        
+        devList.each { dev -> 
           if (dev.typeName == "MQTT Text") subscribe(dev,"text",otherDevices)
           dev.capabilities.each { cap ->
             cap.attributes.each { attr ->
@@ -3026,19 +3023,24 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
     if (deviceList==null) return
         mqtt = getChildDevice("MQTT: Child device driver")
 		deviceList.each{ dev->
-            //isMQTT=dev.getDataValue("mqtt")
             if (dev.getDataValue("origin")!=null) {
                 log ("$dev: this is an MQTT Discovered device so don't expose it as an HE one ","WARN")
                 return
             }
+ 
 			mydName = dev.displayName
 			myName = dev.displayName
+            
+            //log ("$myName devLoop Register [$attribute] $handler  $type", "LOG")
+                             
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
                 def attrs = dev.supportedAttributes  //this gets all attributes in variable, custom etc
             if (type == 'none') type=attribute
-			if(dev.currentValue(attribute)!=null){
+            dAttVal=dev.currentValue(attribute)
+            //log ("$dev $attribute is $dAttVal", "WARN")
+			if(dAttVal!=null){
 				log ("## " + dev.displayName + " $attribute  ${dev.currentValue(attribute)}","TRACE") // + ${attrs}
 				if (attrs.size()>1) multiple=true else multiple=false // TODO BUG Need to handle multiple attributes here
                 log ("#### $attribute sensor #### ${myName} has attributes ${attrs}","TRACE")  // not all are sensors
@@ -3068,20 +3070,13 @@ def devLoopAll(dev, attribute, handler, type='none'){  // This registers all att
 			myName = dev.displayName
         
         
-            log ("LoopAll dev is myName","WARN")
-            isMQTT=dev.getDataValue("mqtt")
-            log ("isMQTT is $isMQTT","ERROR")
-            if (isMQTT!=null) {
-                log ("$dev: this is an MQTT device so don't expose ","KH")
+            log ("$myName devLoopAll Register [$attribute] $handler  $type", "LOG")
+        
+            if (dev.getDataValue("origin")!=null) {
+                log ("$dev: this is an MQTT Discovered device so don't expose it as an HE one ","INFO")
                 return
             }
-        
-        
-        
-        
-        
-        
-        
+
                 normName=normalize(myName)
             	sTopic="homie/${atomicState.normHubName}/${normName}"
                 mqtt.publishMsg (sTopic+'/-device-driver',dev.typeName,1,true)
@@ -3866,7 +3861,6 @@ def unsubscribeCBusEvents(msg=true){
 
 def homieDiscovery() {
         mqtt = getChildDevice("MQTT: Child device driver")
-        log ("setting homie device to " + settings?.homieDevice,"KH")
         mqtt.setHomieDevice(settings?.homieDevice)
     	runIn(1, "subscribeHomieTopic")
 		runIn(1, "subscribeHomieStateTopics")  
@@ -4493,7 +4487,9 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 	if (evt!=null)
 	{
 		device=evt.getDevice()
-        log ("eSwitched [$state] from $device  lastDev is $lastDev  lastDevOnOff is $lastDevOnOff","DEBUG")
+        origin=device.getDataValue("origin")
+        if (origin!=null) discovered = true else discovered = false
+        log ("eSwitched [$state] from $device  lastDev is $lastDev  lastDevOnOff is $lastDevOnOff origin is $origin","DEBUG")
         if (block==device.displayName){
             log ("Blocking Event (switched): $device.displayName","KGREEN")
             return
@@ -4547,8 +4543,9 @@ def switched(evt, name=null, type=null, state=null, device=null) {
 	else 
 	{
 		xName=name
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
 	}
-    discovered==true
     if (settings?.homiePublish) {
         if (!discovered){ //dont republish discovered
 			normName = normalize(name) 
@@ -4592,7 +4589,9 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
     if (evt!=null)
 	{
 		device=evt.getDevice()
-        log ("eSwitchedDimmed [$state] from $device  lastDev is $lastDev  lastDevDim is $lastDevDim ","DEBUG")
+        origin=device.getDataValue("origin")
+        if (origin!=null) discovered = true else discovered = false
+        log ("eSwitchedDimmed [$state] from $device  lastDev is $lastDev  lastDevDim is $lastDevDim ","DEBUG")       
         log ("Comparison: $block  $device.displayName","TRACE")
         if (block==device.displayName){
             log ("Blocking Event (switchedDim): $device.displayName","KGREEN")
@@ -4649,10 +4648,11 @@ def switchedDim(evt, name=null, type=null, state=null, device=null) {  // why do
 	else 
 	{
         xName=name
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
 		log("Device (synch) switchedDim ${state}  ${name} ${xName}", "DEBUG")
 	}
 
-        discovered=true
 		if (settings?.homiePublish) {
           if (!discovered){ //dont republish discovered
 			normName = normalize(name)
@@ -4691,8 +4691,10 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
     mqtt = getChildDevice("MQTT: Child device driver")
 	if (evt!=null)
 	{
-	    device=evt.getDevice()
-            log ("eDimmed [$state] from $device  lastDevDim is $lastDevDim","DEBUG")
+        device=evt.getDevice()
+        origin=device.getDataValue("origin")
+        if (origin!=null) discovered = true else discovered = false
+        log ("eDimmed [$state] from $device  lastDevDim is $lastDevDim","DEBUG")
         if (block==device.displayName){
             log ("Blocking Event (switchedDim): $device.displayName","KGREEN")   
             return
@@ -4736,9 +4738,11 @@ def dimmed(evt, name=null, type=null, state=null,device=null) {
 	} 
 	else {
 		xName=name
-		log ("Device (synch) dimmed ${state}  ${name}", "DEBUG")
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
+		//log ("Device (synch) dimmed ${state}  ${name}", "LOG")
 	}
-    discovered=true
+ 
 	if (settings?.homiePublish) {
         if (!discovered) { //dont republish discovered
     	normName = normalize(name) 
@@ -4794,7 +4798,7 @@ def locked(evt, name=null, type=null, state=null, device=null) {
 		xName=evt.name
         device=evt.getDevice()
         origin=device.getDataValue("origin")
-        //if (origin!=null & origin=="user") log ("This is a virtual MQTT device  $lastDev","KH")
+        if (origin!=null) discovered = true else discovered = false
 		//log(" Device is a lock - now ${state}  ${name} ${xName}", "LOG")
         //log ("Digital: ${evt.isDigital()}  Physical: ${evt.isPhysical()} Change: ${evt.isStateChange} Source: ${evt.source}", "LOG")
         thisDev= name + " ["+ state +"]"
@@ -4830,7 +4834,9 @@ def locked(evt, name=null, type=null, state=null, device=null) {
 	else
 	{
 		xName=name
-		log(" Device (synch) is locked ${state}  ${name} ${xName}", "LOG")
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
+		//log(" Device (synch) is locked ${state}  ${name} ${xName}", "LOG")
 	}
 
 // need to check specific lock is MQTT publish enabled    
@@ -4871,6 +4877,8 @@ def buttons(evt, name=null, type=null, state=null, device=null) {
 	{
 		name=evt.displayName
         device=evt.getDevice()
+        origin=device.getDataValue("origin")
+        if (origin!=null) discovered = true else discovered = false
 		state=evt.value
         btnNum = (int) evt.value.toInteger()
 		xName=evt.name.toLowerCase()
@@ -4878,7 +4886,9 @@ def buttons(evt, name=null, type=null, state=null, device=null) {
 	else
 	{
 		xName=name
-        log(" Device (synch) is ${state}  ${name} ${xName} ${type}", "DEBUG") 
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
+        //log(" Device (synch) is ${state}  ${name} ${xName} ${type}", "DEBUG") 
 
 	}
 
@@ -5433,6 +5443,9 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
 	{
 		name=evt.displayName
         device=evt.getDevice()
+        origin=device.getDataValue("origin")
+        if (origin!=null) discovered = true else discovered = false
+
 		state=evt.value
 		xType=evt.name  // attribute name
         log ("otherDevices got called by event [$xType] ${name} with ${state}   ${evt.getDevice()}  ${evt.device.typeName} ${evt.getDisplayName()} [$lastDev]", "DEBUG")
@@ -5498,6 +5511,8 @@ def otherDevices(evt, name=null, type=null, state=null, device=null, multiple=fa
    } 
 	else {
 		xType=type
+        origin=device.getDataValue("origin")
+        if (origin==null) discovered=false else discovered = true
 		if (multiple) nameSuffix='_'+type else nameSuffix=''
 		xName=name+nameSuffix
 		log ("otherDevices (synch) called with name:${name}    xName: ${xName}    type: ${type} / ${xType}   state: ${state}    multiple: ${multiple}","DEBUG")
@@ -8576,15 +8591,13 @@ def sendPayload(topic,payload) {
 
 def findDeviceByName(name) {
     matchDevice = null
+    // try most popular devices first
     settingsDevices = [settings?.switches, settings?.dimmers, settings?.lights, settings?.colour, settings?.colourT, settings?.colourMode, settings?.contactSensors]
-    //atomicState.test=settingsDevices
     settingsDevices.find{
         if (matchDevice != null) {
             return true
         }
         it.find{
-            //log ("it.display name is $it.displayName and name is $name","KH")
-            //log ("Normalised " + normalize(it.displayName) + "   " + normalize2(it.displayName),"KH")
             if (((it.displayName)==name)|(normalize(it.displayName)==name)){ 
                 matchDevice = it
                 return true
@@ -8592,7 +8605,22 @@ def findDeviceByName(name) {
         }
     }
     if (matchDevice != null) return matchDevice
-    settingsDevices = [settings?.everything, settings?.alarms, settings?.batterysensors, settings?.bulbs, settings?.buttons, settings?.buttonshold, settings?.buttonsPush,
+    // try everything next as popular
+    settingsDevices = [settings?.everything]    
+    settingsDevices.find{
+        if (matchDevice != null) {
+            return true
+        }
+        it.find{
+            if (((it.displayName)==name)|(normalize(it.displayName)==name)) {
+                matchDevice = it
+                return true
+            }
+        }
+    }
+    if (matchDevice != null) return matchDevice 
+    // try all remainining attributes
+    settingsDevices = [settings?.alarms, settings?.batterysensors, settings?.bulbs, settings?.buttons, settings?.buttonshold, settings?.buttonsPush,
         settings?.buttonsrelease, settings?.buttonsdtap, settings?.carbonmonoxidesensors, settings?.chimes, 
         settings?.fans, settings?.garagedoors, settings?.humiditysensors, settings?.illuminancesensors, settings?.keypads, 
         settings?.locks, settings?.motionsensors, settings?.mqtttext, settings?.musicplayers, settings?.outlets, settings?.powersensors, settings?.presencesensors,
@@ -8603,10 +8631,7 @@ def findDeviceByName(name) {
             return true
         }
         it.find{
-            //log ("it.display name is $it.displayName and name is $name","KH")
-            //log ("Normalised " + normalize(it.displayName) + "   " + normalize2(it.displayName),"KH")
-            if (((it.displayName)==name)|(normalize(it.displayName)==name)) {
-            //if (normalize(it.displayName)==name){    
+            if (((it.displayName)==name)|(normalize(it.displayName)==name)) {   
                 matchDevice = it
                 return true
             }
