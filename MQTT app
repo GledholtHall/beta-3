@@ -3027,7 +3027,7 @@ def devLoop(deviceList, attribute, handler, type='none'){  // This registers a s
         mqtt = getChildDevice("MQTT: Child device driver")
 		deviceList.each{ dev->
             //isMQTT=dev.getDataValue("mqtt")
-            if (dev.getDataValue("mqtt")!=null) {
+            if (dev.getDataValue("origin")!=null) {
                 log ("$dev: this is an MQTT Discovered device so don't expose it as an HE one ","WARN")
                 return
             }
