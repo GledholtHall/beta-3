@@ -1,4 +1,4 @@
-// 5/Feb/2022 from 192.168.1.3 - beta 3e pre 27a
+// 5/Feb/2022 from 192.168.1.3 - beta 3e pre 27b
 
 /*
  
@@ -75,7 +75,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 27a"){}
+            section("  ver:   beta 3e pre 27b"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -656,7 +656,7 @@ def synchDiscoveries() {
      /*   numEnabled=0
         if (Homie_onoff!=null) numEnabled += settings?.Homie_onoff.size()
 		if (Homie_dim!=null) numEnabled += settings?.Homie_dim.size()
-		if (Homie_sensors!=null) numEnabled += settings?.Homie_sensor.size()
+		if (Homie_sensor!=null) numEnabled += settings?.Homie_sensor.size()
         if (Homie_button!=null) numEnabled += settings?.Homie_button.size()
         if (Homie_variable!=null) numEnabled += settings?.Homie_variable.size()
         if (Homie_unknowns!=null) numEnabled += settings?.Homie_unknowns.size()
@@ -932,13 +932,13 @@ def discovery() {  // can use atomicState vars in this section
 		def numEnabled=0
 		if (Homie_onoff!=null) numEnabled += settings?.Homie_onoff.size()
 		if (Homie_dim!=null) numEnabled += settings?.Homie_dim.size()
-		if (Homie_sensors!=null) numEnabled += settings?.Homie_sensor.size()
+		if (Homie_sensor!=null) numEnabled += settings?.Homie_sensor.size()
         if (Homie_button!=null) numEnabled += settings?.Homie_button.size()
         if (Homie_variable!=null) numEnabled += settings?.Homie_variable.size()
         if (Homie_unknowns!=null) numEnabled += settings?.Homie_unknowns.size()
 		if (settings?.homieDiscovery){
             if (atomicState.started) {
-                numText = "${numEnabled} of ${numhomieDevs} discovered devices enabled"
+                numText = "${numEnabled} of ${numhomieDevs}  discovered devices enabled"
                 atomicState.homieNumEnabled=numEnabled
             }
 			else numText="checking"
@@ -947,10 +947,6 @@ def discovery() {  // can use atomicState vars in this section
 			numText="disabled"
 		}
 
-/*    section (Virtual Device Creation option")[
-             input "virtualDevs", "bool", title: "<b>Create sensors using matching Virtual Devices rather than MQTT Text ? <br> (MQTT Text provides a battery attribute) </b>", required: true, defaultValue: false, submitOnChange: true
-             }
-*/
              
     section (homieEnabled+"<b>homie</b>    <br>     [${numText}]</font>", hideable: true, hidden: true, submitOnChange: true){
         if (settings?.Homie_onoff != null) ho = settings?.Homie_onoff.size() else ho=0  // Elvis isnt in the house TODO
@@ -962,8 +958,8 @@ def discovery() {  // can use atomicState vars in this section
         if (settings?.Homie_unknowns != null) hu = settings?.Homie_unknowns.size() else hu=0
     	input "homieDiscovery", "bool", title: "<b>homie 3 protocol<b>", required: true, defaultValue: false, submitOnChange: false
         input "homieRunEvery", "bool", title: "<b>Run every time app starts</b>", required: true, defaultValue: false, submitOnChange: false
+        input "virtualDevs", "bool", title: "<b>Create sensors using matching virtual devices<br>rather than MQTT Text ? (this loses battery attribute)</b>", required: true, defaultValue: false, submitOnChange: false
         input "RunhomieDiscovery", "button", title: "Run homie Discovery now"
-        input "virtualDevs", "bool", title: "<b>Create sensors using matching Virtual Devices rather than MQTT Text ?<br>  (loses battery attribute)</b>", required: true, defaultValue: false, submitOnChange: false
 		input name: "homieDevice", type: "text", title: "<b>homie device topic name</b>", description: "... to import devices from", required: false, displayDuringSetup: false, submitOnChage: true
 		input "ClearhomieDiscovery", "button", title: "Clear discovered devices in dropdown lists" //, these can be recreated but the enabled device status is lost"
         input "DeletehomieDiscoveryDevices", "button", title: "Delete enabled devices from HE" //, these can be recreated as long as the enabled status is present
@@ -1646,7 +1642,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 27a',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 27b',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -8117,8 +8113,11 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                             child.updateDataValue("switch_MAP","[true,false]")
                         }
                     if (attrData=='level') {
-                        child.updateDataValue("switch_Level",'homie/'+atomicState.homie+'/'+name+'/dim')
-                        child.updateDataValue("switch_Level",'homie/'+atomicState.homie+'/'+name+'/dim/set')
+                        
+                        child.updateDataValue("switch_Topic",'homie/'+atomicState.homie+'/'+name+'/onoff')
+                        child.updateDataValue("switch_Cmd",'homie/'+atomicState.homie+'/'+name+'/onoff/set')
+                        child.updateDataValue("level_Topic",'homie/'+atomicState.homie+'/'+name+'/dim')
+                        child.updateDataValue("level_Cmd",'homie/'+atomicState.homie+'/'+name+'/dim/set')
                             //child.updateDataValue("switch_ON","true")                                             // ##### ToDo dont do this if already has a value (shouldnt happen as new device)
                             //child.updateDataValue("switch_OFF","false")
                             child.updateDataValue("max_Level","100")   //  Need fixing
@@ -8389,6 +8388,8 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
 					if (system=="homie"){
                          child.updateDataValue("level_Topic",'homie/'+atomicState.homie+'/'+name+'/dim')
                          child.updateDataValue("level_Cmd",'homie/'+atomicState.homie+'/'+name+'/dim/set')
+                         child.updateDataValue("switch_Topic",homie/'+atomicState.homie+'/'+name+'/'+state')
+                         child.updateDataValue("switch_Cmd",homie/'+atomicState.homie+'/'+name+'/'+state/set')
                          child.updateDataValue("max_Level",'100')  // this will get updated later from the $format value
                          child.updateDataValue("mqtt",'enabled')
                          child.updateDataValue("origin",'homie')
