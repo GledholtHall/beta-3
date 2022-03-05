@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 5/Feb/2022 from 192.168.1.3  pre 27a
+// 9/March/2022 from 192.168.1.13  pre 28
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -11,7 +11,7 @@ metadata {
 		capability "Presence Sensor"
 		
         command "publishMsg", ["String","String"]
-		command "subscribeTopic",["String"]
+        command "subscribeTopic",["String"]
         command "unsubscribeTopic",["String"]
         command "subscribeWildcardTopic",["String"]
         command "logOutgoingMessages",["Boolean"]
@@ -73,7 +73,7 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 27"
+    version="beta 3e pre 28"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
@@ -112,13 +112,15 @@ def connect() {
 void setLogLevel (level) {
     if (level<6) {
         state.logLevel=level.toInteger()
-        log ("Log level set to " + level,"INFO")
+        if (state.myHub) log ("Extended Log level set to " + level,"INFO")
+        else log ("Log level set to " + level,"INFO")
         log ("## Restarted ##","WARN")
         if (state.zwave2mqttTopic==null) state.zwave2mqttTopic="unused1"
         if (state.zigbee2mqttTopic==null) state.zigbee2mqttTopic="unused2"
         if (state.HAInTopic==null) HAInTopic="unused3"  
     }
 }
+
 
 void setHAInDiscovery(Boolean disc) {
     state.HAInDisc=disc
@@ -235,6 +237,7 @@ def publishMsg(String topic, String payload,int qos = 1, boolean retained = fals
         log ("Dropping message - no MQTT connection","WARN")
         return
     }
+    
     if (suppress == true){
         log ("Suppress: $topic $payload","TRACE")
         if (state.myHub) log("Suppressed: $topic = $payload","LOG")
@@ -299,7 +302,7 @@ def logOutgoingMessages(logging){
     
 def unsubscribeTopic (String s) {
     mqttState=interfaces.mqtt.isConnected()
-	log ("MQTT unsubscribing from: " + s, "INFO")
+	log ("MQTT unsubscribing from: " + s, "DEBUG")
     if (mqttState){
         interfaces.mqtt.unsubscribe(s)
         if (s.contains('/+') || s.contains('/*')) {}         
@@ -689,7 +692,7 @@ def parse(String description) {
             return
     } // not HA
 
-// ##################################################   homie ###############################################	
+// ##################################################   homie  ###############################################	
     
 	else if (topic[0]=="homie" && topic[1]== "${state.normHubName}"){ //local - look for incoming homie 'set' commands that control Hubitat devices here
         log ("Received this message from homie " + topic + " " + payload, "TRACE")
@@ -697,14 +700,18 @@ def parse(String description) {
             //sequence=state.seq2.toString()
 		if (topicCount==6) {   // rather than these why not just check last topic  - endsWith("/set")
 			if ((topic[5]=="set")&&(topic[4]=="rgb")) {
-                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
-				log ("Received this " + payload + "  " + payload.size(), "KH")
+                pload=payloadFull.split(',')
+                parent.testit (pload)
+                //parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json,pload)
+				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return					
 			}
         }      
         else if (topicCount==5) { 
 			if (topic[4]=="set") {
-                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json)
+                                pload=payloadFull.split(',')
+                parent.testit (pload)
+                parent.commandP(topic[2],payload[0],payload,payloadFull,topic[3],interfaces.mqtt.parseMessage(description),json,pload)
 				log ("Received this " + payload + "  " + payload.size(), "TRACE")
                 return				
 			}
@@ -723,18 +730,20 @@ def parse(String description) {
 			}  
 
 	    }  //topiccount 4
-    } // not local homie message	
+    } // not local homie message
+    //==================================================  homie remote ==============================================================================
 	else if (topic[0]=="homie" && topic[1]== state.homieDeviceDiscovery)  {   // remote subscribed homie) 
-        log ("homie discovery","TRACE")
+        
+        //log ("homie:  type:$type and payload:$payload  " + payload[0],"TRACE")
 		if (topic[2]=='$nodes') {  // maybe pass this directly to the input selector ??
-			log ("============= ${payload.size()} homie entries for device ${topic[1]} =============",, "INFO")
+			log ("============= ${payload.size()} homie entries for device ${topic[1]} =============", "INFO")
 			return
 		}
 		if (topic[3]=='onoff') {
             parent.onoffEventP (topic[2],payload[0],topic[1]) // TODO This may need attention as I'm not passing the 'topic' value below but method doesn't seem to use it ?
-            return
-		}
-		else if (topic[3]=='dim' && topicCount==4) {
+            return	
+        }
+        else if (topic[3]=='dim' && topicCount==4) {
             parent.dimEventP (topic[2],payload[0],topic[1],255)  //TODO check see below
             // TODO check if this level handling is problematic assuming 1.0 ?
             return
@@ -744,16 +753,23 @@ def parse(String description) {
             return
 		}
 		else if (topic[3]=='$type') {
+            
 			switch (payload[0]) {
+                
 				case 'switch':
                 case 'socket':
 					parent.homieOnOffDev (topic[2],'onoff')
 					break
 				case 'light':
-                case 'RGBT light':
-                case 'RGB light':
-                case 'CT light':
                     parent.homieDimDev (topic[2],'dim')
+					break
+                case 'RGBT light':
+                case 'RGBW light':
+                case 'RGB light':
+                    parent.homieRGBDev (topic[2],'colour')
+					break
+                case 'CT light':
+                    parent.homieColourTempDev (topic[2],'colourTemp')
 					break
 				case 'sensor':
                     log ("Sensor call is for " + topic[2], "LOG")
@@ -794,11 +810,15 @@ def parse(String description) {
             //log ( "--$state.seq2--   - mS","DEBUG")
 			log("Received homie UOM from MQTT ${topic[2]} " + status, "TRACE")
 		 }
-         }
-        else parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+            }
+         
+        
+        else {
+            log ("homie lookup:  type:$type and payload:$payload  "+payload[0],"TRACE")
+            parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
+        }
 
 	} // end remote homie
-    
     else if (topic[0]=='shellies')
     {
         if (topic[2] == "online" | topic[2] == "onlineRet") {
@@ -821,8 +841,8 @@ def parse(String description) {
     }
 	else {  // unhandled parse messages arrive here
         top=interfaces.mqtt.parseMessage(description).topic
-        if (json=="true")  log ("Ad hoc MQTT parse  $top       "+payloadFull, "WARN")
-        else log ("ad hoc MQTT parse  $top       ${payload[0]}", "WARN")
+        if (json=="true")  log ("Ad hoc MQTT parse  $top       "+payloadFull, "LOG")
+        else log ("ad hoc MQTT parse  $top       ${payload[0]}", "LOG")
         parent.lookupP(payload[0],payloadFull,interfaces.mqtt.parseMessage(description).topic, json)  // replacement for event call
 	}
     json="false"
@@ -874,7 +894,7 @@ def setStateVar(var,value,value2=null) {	//DEPRECATED // Better to expose as att
 	if (var == "logLevel"){
 		state.logLevel = value.toInteger()
         log ("## Restarted ##","WARN")
-		log ("Log Level set to " + value,"INFO")
+		//log ("Extended MQTT client logging: $mine","LOG")log ("Log Level set to " + value,"INFO")
 	}
 	else if (var == "homieDevice"){
 		state.homieDeviceDiscovery = value
