@@ -125,7 +125,9 @@ def setColorTemperature(value, level = null, tt = null) {
     String verb = (device.currentValue("colorTemperature") == ct) ? "is" : "was set to"
     eventSend("colorTemperature",verb,ct,"°K")
     setGenericTempName(ct)
-	if ((level!=null&&(level>=0)) setLevel(level, tt)
+	if ((level!=null)&&(level>=0)) setLevel(level, tt)
+
+	
 }
 
 
