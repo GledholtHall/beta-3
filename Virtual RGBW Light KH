@@ -3,8 +3,9 @@
 
     Copyright 2018 -> 2022 Hubitat Inc. All Rights Reserved
 	modified by Kevin Hawkins v1.0 intercepting forced ON behaviour if level is passed as 0
+
+    ver pre28a 6/March/2022
     
-    v0.01
 */
 
 metadata {
@@ -16,6 +17,7 @@ metadata {
         capability "Switch Level"
         capability "Light"
         capability "ColorMode"
+        capability "LevelPreset"
 
     }
 
@@ -94,7 +96,7 @@ def setHue(value) {
     if (value == null) return
     Integer hue = limitIntegerRange(value,0,100)
 
-    //if (device.currentValue("switch") != "on") on()
+    if (device.currentValue("switch") != "on") on()
     if (device.currentValue("colorMode") != "RGB") {
         eventSend("colorMode","is","RGB")
     }
@@ -106,7 +108,7 @@ def setHue(value) {
 def setSaturation(value) {
     if (value == null) return
     Integer sat = limitIntegerRange(value,0,100)
-    //if (device.currentValue("switch") != "on") on()
+    if (device.currentValue("switch") != "on") on()
     if (device.currentValue("colorMode") != "RGB") {
         eventSend("colorMode","is","RGB")
     }
@@ -125,9 +127,7 @@ def setColorTemperature(value, level = null, tt = null) {
     String verb = (device.currentValue("colorTemperature") == ct) ? "is" : "was set to"
     eventSend("colorTemperature",verb,ct,"°K")
     setGenericTempName(ct)
-	if ((level!=null)&&(level>=0)) setLevel(level, tt)
-
-	
+	setLevel(level, tt)
 }
 
 
@@ -183,6 +183,77 @@ def setGenericName(value){
     }
     eventSend("colorName","is",colorName)
 }
+
+def presetLevel(value, rate = null) {
+    if (value == null) return
+    Integer level = limitIntegerRange(value,0,100)
+    if (level == 0) {
+        off()
+        return
+    }
+    //if (device.currentValue("switch") != "on") on()
+    String verb = (device.currentValue("level") == level) ? "is" : "was set to"
+    eventSend("level",verb,level,"%")
+}
+def presetColor(Map value){
+    if (value == null) return
+    if (value.hue == null || value.saturation == null) return
+    if (device.currentValue("colorMode") != "RGB") {
+        eventSend("colorMode","is","RGB")
+    }
+    Integer hue = limitIntegerRange(value.hue,0,100)
+    String verb = (device.currentValue("hue") == hue) ? "is" : "was set to"
+    eventSend("hue",verb,hue,"%")
+    setGenericName(hue)
+
+    Integer sat = limitIntegerRange(value.saturation,0,100)
+    verb = (device.currentValue("saturation") == sat) ? "is" : "was set to"
+    eventSend("saturation",verb,sat,"%")
+
+    if (value.level) {
+        Integer level = limitIntegerRange(value.level,0,100)
+        presetLevel(level)
+    }
+}
+
+def presetHue(value) {
+    if (value == null) return
+    Integer hue = limitIntegerRange(value,0,100)
+
+    //if (device.currentValue("switch") != "on") on()
+    if (device.currentValue("colorMode") != "RGB") {
+        eventSend("colorMode","is","RGB")
+    }
+    String verb = (device.currentValue("hue") == hue) ? "is" : "was set to"
+    eventSend("hue",verb,hue,"%")
+    setGenericName(hue)
+}
+
+def presetSaturation(value) {
+    if (value == null) return
+    Integer sat = limitIntegerRange(value,0,100)
+    //if (device.currentValue("switch") != "on") on()
+    if (device.currentValue("colorMode") != "RGB") {
+        eventSend("colorMode","is","RGB")
+    }
+    String verb = (device.currentValue("saturation") == sat) ? "is" : "was set to"
+    eventSend("saturation",verb,sat,"%")
+}
+
+def presetColorTemperature(value, level = null, tt = null) {
+    if (value == null) return
+
+    Integer ct = limitIntegerRange(value,1500,9000)
+    //if (device.currentValue("switch") != "on") on()
+    if (device.currentValue("colorMode") != "CT") {
+        eventSend("colorMode","is","CT")
+    }
+    String verb = (device.currentValue("colorTemperature") == ct) ? "is" : "was set to"
+    eventSend("colorTemperature",verb,ct,"°K")
+    setGenericTempName(ct)
+	if (level) setLevel(level, tt)
+}
+
 
 Integer limitIntegerRange(value,min,max) {
     Integer limit = value.toInteger()
