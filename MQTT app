@@ -1,4 +1,4 @@
-// 05/Mar/2022 from 192.168.1.13 - beta 3e pre 28
+// 06/Mar/2022 from 192.168.1.13 - beta 3e pre 28a
 
 /*
  
@@ -82,7 +82,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 28"){}
+            section("  ver:   beta 3e pre 28a"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -205,7 +205,7 @@ def vMQTT() {
     
       dynamicPage(name: "vMQTT", title: "<h2><b>Virtual MQTT Devices and Data</b></h2>(optional)", install:false, nextPage: "configuration") {
           
-        atomicState.vList=["RM Connector Variable", "MQTT Text","Remote Thermostat", "Virtual audioVolume","Virtual CO Detector", "Virtual Color Temperature Light", "Virtual Contact Sensor", "Virtual Dimmer", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
+        atomicState.vList=["RM Connector Variable", "MQTT Text","Remote Thermostat", "Virtual audioVolume","Virtual CO Detector", "Virtual Color Temperature Light", "Virtual Color Temperature Light KH", "Virtual Contact Sensor", "Virtual Dimmer","Virtual Dimmer KH", "Virtual Fan Controller", "Virtual Garage Door Controller", "Virtual Humidity Sensor", "Virtual Illuminance Sensor", "Virtual Lock", "Virtual Moisture Sensor", "Virtual Motion Sensor", "Virtual Multi Sensor", "Virtual Omni Sensor", "Virtual Presence", "Virtual RGB Light", "Virtual RGBW Light","Virtual RGBW Light KH", "Virtual Shade","Virtual Smoke Detector", "Virtual Switch", "Virtual Temperature Sensor", "Virtual Thermostat"  ]
         section {
           input "virtuals", "capability.virtual",hideWhenEmpty: true, multiple: true, required: false, title: "<b>Virtual Devices</b>", submitOnChange: false
           input(name: "capability", type: "enum", title: "Device Type",description: null, multiple: false, required: false, submitOnChange: true, options: atomicState.vList)
@@ -1674,7 +1674,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 28',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 28a',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -2766,7 +2766,7 @@ def synchDevices() {
     log ("Resynch MQTT device states and HA discovery topics","INFO")
     publishList=[:]
     wipeLastDevs('None')
-    atomicState.sendSets=false
+    //atomicState.sendSets=false
     log ("Blocking ../set commands to MQTT until subscribed devices are synchronised", "INFO")
     
     devLoop (settings?.switches,"switch","switched","onoff")   // moved to here (earlier) before color
@@ -7398,7 +7398,7 @@ def deviceAction (child,devType,value,attr=null,message=null)  {
                              //if (devType=="system")child.setLevel (val,0)
                              block=child.displayName
                              //log ("Block (level): $child.displayName", "KGREEN")
-                             child.setLevel (val,0)
+                             if (child.hasCommand ("presetLevel")) child.presetLevel (val,0) else child.setLevel (val,0)
                              lastDev="$child [$val]"   // This updates to the last value on MQTT ie the MAP vlaue
                              lastDevDim="$child [$val]" 
                              runInMillis (100, "unblockEvents")  // Blocks events from this device for 100mS
@@ -7413,7 +7413,7 @@ def deviceAction (child,devType,value,attr=null,message=null)  {
 						        //if (vDev) child.setLevel(intLevel,1)
                                 block=child.displayName
                                 //log ("Block (level): $child.displayName", "KGREEN")
-                                child.setLevel(val,1)
+                                if (child.hasCommand ("presetLevel")) child.presetLevel (val,1) else child.setLevel (val,1)
                                 lastDev="$child [$val]"   // This normally updates to the last value on MQTT ie the MAP vlaue
                                 lastDevDim="$child [$val]"
                                 if (val==0) lastDevOnOff= "$child [OFF]" else lastDevOnOff= "$child [ON]"  // as HE imposes this state
@@ -7470,7 +7470,9 @@ def deviceAction (child,devType,value,attr=null,message=null)  {
         }
         lastDevColor="$child [$col]"
         lastDevColTemp="$child [$col]"
-        child.setColorTemperature(col)
+        //cLevel = child.currentLevel
+        log ("Setting ColorTemperature ", "KH")
+        if (child.hasCommand ("presetColorTemperature")) child.presetColorTemperature (col) else child.setColorTemperature (col)
     }
     
     
@@ -7645,8 +7647,7 @@ def dimEventP (name,level,type,max) {
     lastDevDim="$child [$level]"
     if (level=='0') lastDevOnOff= "$child [OFF]" else lastDevOnOff= "$child [ON]"  // as HE enforces this
   
-          
-    child.setLevel(level.toInteger(),1)
+    if (child.hasCommand ("presetLevel")) child.presetLevel (level.toInteger(),1) else child.setLevel(level.toInteger(),1)
 
 }
 
@@ -8404,7 +8405,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
         if ((0 <= intLevel)) //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
         {
 			if (matchDevice != null) {
-                    matchDevice.setLevel(intLevel, 1)
+                     if (matchDevice.hasCommand ("presetLevel")) matchDevice.presetLevel (intLevel,1) else matchDevice.setLevel(intLevel, 1)
                     dMatch = true
             }
 		}
@@ -8505,24 +8506,22 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
         
     } else if (cmd == "hsv") {
 		if (matchDevice != null) {
-            
-			matchDevice.setSaturation(payload[1].toInteger())
-			matchDevice.setHue(payload[0].toInteger())
-			matchDevice.setLevel(payload[2].toInteger())
+            if (matchDevice.hasCommand ("presetSaturation")) matchDevice.presetSaturation (payload[1].toInteger()) else matchDevice.setSaturation(payload[1].toInteger())
+			if (matchDevice.hasCommand ("presetHue")) matchDevice.presetHue (payload[0].toInteger()) else matchDevice.setHue(payload[0].toInteger())
+            if (child.hasCommand ("presetLevel")) child.presetLevel(payload[2].toInteger()) else matchDevice.setLevel(payload[2].toInteger())			
 			dMatch = true
 		}
-
     } else if (cmd == "hue") {
 		if (matchDevice != null) {
-			matchDevice.setHue(payload[0].toInteger())
+            if (matchDevice.hasCommand ("presetHue")) matchDevice.presetHue (payload[0].toInteger()) else matchDevice.setHue(payload[0].toInteger())
         }
     } else if (cmd == "level") { // currently only searching colour bulbs for this as it's a RGB event
 		if (matchDevice != null) {
-			matchDevice.setLevel(payload[0].toInteger())
+            if (child.hasCommand ("presetLevel")) child.presetLevel(payload[3].toInteger()) else matchDevice.setLevel(payload[3].toInteger())
         }
     } else if (cmd == "saturation") {
 		if (matchDevice != null) {
-                matchDevice.setSaturation(payload[0].toInteger())
+            if (matchDevice.hasCommand ("presetSaturation")) matchDevice.presetSaturation (payload[1].toInteger()) else matchDevice.setSaturation(payload[1].toInteger())
         }
     } else if (cmd == "color-temperature") { // This is from the homie topic       //TOD these on homie are normalised names - need to match as such i.e. as in thermostats below TODO BUG ??
             if (matchDevice != null) {
@@ -8537,7 +8536,10 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
             log("HSv Block set temp value at $HSL", "LOG")
             runInMillis  (200, "unblockhsv")  //trying 50mS
             lastDevColTemp="$matchdevice [$cKelvin]"
-            matchDevice.setColorTemperature(cKelvin)
+            //cLevel=matchDevice.currentLevel
+            //matchDevice.setColorTemperature(cKelvin,matchDevice.currentLevel)
+            log ("Setting ColorTempearture ", "KH")
+            if (matchDevice.hasCommand ("presetColorTemperature")) matchDevice.presetColorTemperature(cKelvin,0) else matchDevice.setColorTemperature(cKelvin,0) 
         }
 
     }
@@ -8761,7 +8763,8 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
            intLevel = data.level.toInteger()  // ToDo range check
            if ((0 <= intLevel)) { //  && (intLevel <= 100)) //TODO Check removing this upper bound check doesn't break anything
 		 	  if (matchDevice != null) {  
-                matchDevice.setLevel(intLevel,data.ramp)
+                //matchDevice.setLevel(intLevel,data.ramp)
+                if (matchDevice.hasCommand ("presetLevel")) matchDevice.presetLevel(intLevel,data.ramp) else matchDevice.setLevel(intLevel,data.ramp)
                 mqtt.publishMsg("homie/${atomicState.normHubName}/${normalize(matchName)}/ramp",ramp.toString(), 1)
                 dMatch = true
                 matchDevice.updateDataValue("[MQTT]_ramp", ramp.toString())
@@ -9518,7 +9521,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
         attrData="switch"
     }
     else if ((type=='dim')||(type=='light')){
-        devType='Virtual Dimmer'
+        devType='Virtual Dimmer KH'
         attrData="level"
     }                                          
 	else if (type=='group') {
@@ -9631,11 +9634,13 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
     }
     else if ((type=='RGBW')||(type=='RGBT')) {
         attrData='colour'
-        devType="Virtual RGBW Light"  // where did RGBT come from ???
+        //devType="Virtual RGBW Light"  // where did RGBT come from ???
+        devType="Virtual RGBW Light KH"  // where did RGBT come from ???
     }
     else if (type=='CT') {
         attrData='colour'  // FTTB
-        devType = "Virtual Color Temperature Light"
+        //devType = "Virtual Color Temperature Light"
+        devType = "Virtual Color Temperature Light KH"
         //devType="Virtual RGBW Light"  //temporary  
     }
        
@@ -9694,10 +9699,7 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
                         child.updateDataValue("max_Level","100")   //  Need to check if this is updating correctly later
                         }
                     
-                    if (attrData=='colour')  {
-                        
-                        log ("everything is colourful","KH")
-                        
+                    if (attrData=='colour')  {                       
                         if ((type=='CT')||((type=='RGBW')||(type=='RGBT'))) {
                             child.updateDataValue("colorTemperature_Topic",'homie/'+atomicState.homie+'/'+name+'/color-temperature')      //setColorTemperature    Color Temperature| Level | Transition time
                             child.updateDataValue("colorTemperature_Cmd",'homie/'+atomicState.homie+'/'+name+'/color-temperature/set')    //setColorTemperature    Color Temperature| Level | Transition time
