@@ -1,4 +1,4 @@
-// 06/Mar/2022 from 192.168.1.13 - beta 3e pre 28x
+// 13/Mar/2022 from 192.168.1.13 - beta 3e pre 29
 
 /*
  
@@ -82,7 +82,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 28x"){}
+            section("  ver:   beta 3e pre 29"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -1674,7 +1674,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 28x',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 29',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -8430,13 +8430,25 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
 			} else {
 				colour = payload
                 log ("here with %colour","KH")
-                hueDown=pload[0].toInteger()
-                hue=(pload[0].toInteger()/3.6).toInteger()       //.round(0)   //sort out rounding better
-                sat=pload[1].toInteger()
-                level=pload[2].toInteger()
-                hueUp = hue*3.6
+                //hueDown=pload[0].toInteger()
+                temp=""+pload[0]
+                hueExt=pload[0].toFloat()
+                hue=(hueExt/3.6).toInteger()       //.round(0)   //sort out rounding better
+                //sat=pload[1].toInteger()
+                sat=pload[1].toFloat()
+                sat=sat.toInteger()
+                //level=pload[2].toInteger()
+                try {
+                level=pload[3].toFloat()
+                level=level.toInteger()
+                //hueUp = hue*3.6
+                }
+                catch (e) {
+                    log ("No level supplied","KH")
+                    level=matchDevice.currentLevel
+                }
                 
-                log ("[ $hue $sat $level ]   (hue: $hueDown  $hueUp)", "KH")
+                log ("[ $hue $sat $level ]   (hueX: $hueExt)", "KH")
 						HSL = [: ]
 						HSL.put('hue', hue)
 						HSL.put('saturation', sat)
