@@ -8555,7 +8555,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
             //cLevel=matchDevice.currentLevel
             //matchDevice.setColorTemperature(cKelvin,matchDevice.currentLevel)
             log ("Setting ColorTempearture ", "KH")
-            if (matchDevice.hasCommand ("presetColorTemperature")) matchDevice.presetColorTemperature(cKelvin,0) else matchDevice.setColorTemperature(cKelvin,0) 
+            if (matchDevice.hasCommand ("presetColorTemperature")) matchDevice.presetColorTemperature(cKelvin) else matchDevice.setColorTemperature(cKelvin) 
         }
 
     }
