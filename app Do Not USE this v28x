@@ -1857,8 +1857,12 @@ def abort (where) {
             atomicState.abortable=false
             atomicState.appCount=atomicState.appCount-1    
 }
-
+///test
 def addProperty(key,value,device=null) {
+    if (key==null) {
+        log ("Attempt to add property with null key: $key  $value   $device","KH")
+        return
+    }
     att=value  
     dOrigin=device.getDataValue("origin")
     mqtt = getChildDevice("MQTT: Child device driver")
@@ -8416,9 +8420,9 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
 					RGB = hubitat.helper.ColorUtils.hexToRGB(state)
 					HSV = hubitat.helper.ColorUtils.rgbToHSV(RGB)
 					HSL = [:]
-					HSL.put('hue', HSV[0].toInteger())
-					HSL.put('saturation', HSV[1].toInteger())
-					HSL.put('level', HSV[2].toInteger())
+					HSL.put('hue', Math.round(HSV[0]))  // .toInteger())
+					HSL.put('saturation', Math.round(HSV[1])) //.toInteger())
+					HSL.put('level', Math.round(HSV[2]))  //.toInteger())
                     log (" HSL is $HSL","KH")
                     hsvBlock="LOCK"
                     runInMillis  (200, "unblockhsv")  //trying 50mS
@@ -8433,14 +8437,14 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
                 //hueDown=pload[0].toInteger()
                 temp=""+pload[0]
                 hueExt=pload[0].toFloat()
-                hue=(hueExt/3.6).toInteger()       //.round(0)   //sort out rounding better
+                hue=Math.round(hueExt/3.6)//.toInteger()       //.round(0)   //sort out rounding better
                 //sat=pload[1].toInteger()
                 sat=pload[1].toFloat()
-                sat=sat.toInteger()
+                sat=Math.round(sat)//.toInteger()
                 //level=pload[2].toInteger()
                 try {
                 level=pload[3].toFloat()
-                level=level.toInteger()
+                level=Math.round(level)  //.toInteger()
                 //hueUp = hue*3.6
                 }
                 catch (e) {
