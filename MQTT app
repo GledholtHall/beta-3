@@ -1,4 +1,4 @@
-// 06/Mar/2022 from 192.168.1.13 - beta 3e pre 28a
+// 13/Mar/2022 from 192.168.1.13 - beta 3e pre 29
 
 /*
  
@@ -82,7 +82,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 28a"){}
+            section("  ver:   beta 3e pre 29"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -1674,7 +1674,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 28a',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 29',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -1857,8 +1857,12 @@ def abort (where) {
             atomicState.abortable=false
             atomicState.appCount=atomicState.appCount-1    
 }
-
+///test
 def addProperty(key,value,device=null) {
+    if (key==null) {
+        log ("Attempt to add property with null key: $key  $value   $device","KH")
+        return
+    }
     att=value  
     dOrigin=device.getDataValue("origin")
     mqtt = getChildDevice("MQTT: Child device driver")
@@ -3433,8 +3437,8 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pModes = ',"modes": "homie/'+"$atomicState.normHubName/$normName" + '/$format"'
         //pModes=',"modes": "[“auto”, “off”, “cool”, “heat”]"'
         pValTemp=''
-        if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-        else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+        if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+        else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 
 
        // [“auto”, “off”, “cool”, “heat”, “dry”, “fan_only”]
@@ -3450,7 +3454,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         //pDev
         //pValTemp
         //pID 
-        //pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
+        //pValTemp = ',"state_value_template":"{{ value | round(0) }}"'  // acts as convert to int
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pDevClass+pState+pUOM+pON+pOFF+pIcon+pValTemp+pID+pCurrTemp+pSetpoint+pSetpointCmd+pHSetpoint+pHSetpointCmd+pCSetpoint+pCSetpointCmd+pFanMode+pFanCmd+pFanModes+pMode+pModeCmd+pModes+pDev+'}'        
     } 
 	else if (type=="switch"|type=="light") {
@@ -3463,7 +3467,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			//pOFF = ',"payload_off":"'+payOFF+'"'
 			pIcon = '' // ',"icon":"mdi:power"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			if (type=="switch") payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pON+pOFF+pIcon+pDev+pValTemp+pID+'}'
 			if (type=="light") {
 				pOnType = ',"on_command_type":"first"'
@@ -3500,7 +3504,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			//if (UOM!='') pUOM = ',"unit_of_measurement":"'+UOM+'"' else pUOM=''
 			pIcon = '' // ',"icon":"mdi:power"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			if (type=="binary_sensor") {
 				// HA categories for various binary sensors https://www.home-assistant.io/components/binary_sensor/
 				// TODO must map binary_sensor payload values to ON OFF
@@ -3524,11 +3528,11 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 				pUOM=',"unit_of_measurement": "'+UOM+'"'
 				pON=''  // remove on:off states from sensor adverts ? Do I need to be more selective say with some (analogue?) 'sensors' that might also have an on:off state ? TODO check
 				pOFF=''
-                pValTemp = ',"value_template":"{{ value | round(0) }}"'  // acts as convert to int
+                pValTemp = ',"state_value_template":"{{ value | round(0) }}"'  // acts as convert to int
 				if (category == "measure-temperature")  { 
 				    pDevClass = ',"device_class": "temperature"'
-				    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
-                    else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"value_template":"{{ value | round(1) }}"'
+				    if (tempUnits=="Celsius x.x°C")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
+                    else if (tempUnits=="Fahrenheit x.x°F")	pValTemp = ',"state_value_template":"{{ value | round(1) }}"'
 				}
                 else if (category == "measure-battery") pDevClass = ',"device_class": "battery"'
                 else if (category == "illuminance") pDevClass = ',"device_class": "illuminance"'
@@ -3552,7 +3556,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
 			pUOM = ''
 			pIcon = '' // ',"icon":"mdi:lock"'
 			pDev = ''
-			pValTemp = ',"value_template":"{{ value }}"'
+			pValTemp = ',"state_value_template":"{{ value }}"'
 			payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pLock+pUnlock+pLocked+pUnlocked+pIcon+pDev+pValTemp+pID+'}'
     }
     else if (type=="shade") {
@@ -3570,7 +3574,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pUOM = ''
         pIcon = '' // ',"icon":"mdi:garage"'
         pDev = ''
-        pValTemp = ',"value_template":"{{ value }}"'
+        pValTemp = ',"state_value_template":"{{ value }}"'
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pPos+pPosCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
         type='cover'  //revert to cover
     } 
@@ -3585,7 +3589,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pUOM = ''
         pIcon = '' // ',"icon":"mdi:garage"'
         pDev = ''
-        pValTemp = ',"value_template":"{{ value }}"'
+        pValTemp = ',"state_value_template":"{{ value }}"'
         payload='{'+pName+pAvail+pAvailPay+pNotAvailPay+pUID+pState+pCmd+pUOM+pOPEN+pSTOP+pCLOSE+pIcon+pDev+pValTemp+pID+'}'
     }
     else if (type=="alarm_control_panel") {
@@ -8416,9 +8420,9 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
 					RGB = hubitat.helper.ColorUtils.hexToRGB(state)
 					HSV = hubitat.helper.ColorUtils.rgbToHSV(RGB)
 					HSL = [:]
-					HSL.put('hue', HSV[0].toInteger())
-					HSL.put('saturation', HSV[1].toInteger())
-					HSL.put('level', HSV[2].toInteger())
+					HSL.put('hue', Math.round(HSV[0]))  // .toInteger())
+					HSL.put('saturation', Math.round(HSV[1])) //.toInteger())
+					HSL.put('level', Math.round(HSV[2]))  //.toInteger())
                     log (" HSL is $HSL","KH")
                     hsvBlock="LOCK"
                     runInMillis  (200, "unblockhsv")  //trying 50mS
@@ -8430,13 +8434,25 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
 			} else {
 				colour = payload
                 log ("here with %colour","KH")
-                hueDown=pload[0].toInteger()
-                hue=(pload[0].toInteger()/3.6).toInteger()       //.round(0)   //sort out rounding better
-                sat=pload[1].toInteger()
-                level=pload[2].toInteger()
-                hueUp = hue*3.6
+                //hueDown=pload[0].toInteger()
+                temp=""+pload[0]
+                hueExt=pload[0].toFloat()
+                hue=Math.round(hueExt/3.6)//.toInteger()       //.round(0)   //sort out rounding better
+                //sat=pload[1].toInteger()
+                sat=pload[1].toFloat()
+                sat=Math.round(sat)//.toInteger()
+                //level=pload[2].toInteger()
+                try {
+                level=pload[3].toFloat()
+                level=Math.round(level)  //.toInteger()
+                //hueUp = hue*3.6
+                }
+                catch (e) {
+                    log ("No level supplied","KH")
+                    level=matchDevice.currentLevel
+                }
                 
-                log ("[ $hue $sat $level ]   (hue: $hueDown  $hueUp)", "KH")
+                log ("[ $hue $sat $level ]   (hueX: $hueExt)", "KH")
 						HSL = [: ]
 						HSL.put('hue', hue)
 						HSL.put('saturation', sat)
@@ -8539,7 +8555,7 @@ def commandP(name, state, payload, fullPayload, cmd, topic, json, pload) { // 's
             //cLevel=matchDevice.currentLevel
             //matchDevice.setColorTemperature(cKelvin,matchDevice.currentLevel)
             log ("Setting ColorTempearture ", "KH")
-            if (matchDevice.hasCommand ("presetColorTemperature")) matchDevice.presetColorTemperature(cKelvin,0) else matchDevice.setColorTemperature(cKelvin,0) 
+            if (matchDevice.hasCommand ("presetColorTemperature")) matchDevice.presetColorTemperature(cKelvin) else matchDevice.setColorTemperature(cKelvin) 
         }
 
     }
