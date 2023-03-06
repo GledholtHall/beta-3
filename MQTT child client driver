@@ -1,5 +1,5 @@
 // Not licensed for onward /re-distribution for any reason and in any form  - see license
-// 9/March/2022 from 192.168.1.13  pre 28
+// 9/March/2023 from 192.168.1.10  pre 30
 import java.security.MessageDigest
 import groovy.transform.Field
 @Field static String mqttPassword=''
@@ -73,7 +73,7 @@ def initialize() {
     state.topic0="DoNoTmatch"
     heartbeat()
     schedule("0 * * ? * *", heartbeat)
-    version="beta 3e pre 28"
+    version="beta 3e pre 30"
     
     sendEvent (name: "presence", value: "not present")
     //sendEvent (name: "sequence", value: state.seq++)
