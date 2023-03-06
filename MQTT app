@@ -1,4 +1,4 @@
-// 13/Mar/2022 from 192.168.1.13 - beta 3e pre 29
+// 9/Mar/2023 from 192.168.1.8 [C8] - beta 3e pre 30 
 
 /*
  
@@ -82,7 +82,7 @@ preferences {  // can't use atomicState vars in this section
 
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 29"){}
+            section("  ver:   beta 3e pre 30"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -309,13 +309,15 @@ def vMQTT() {
  
                     atomicState.tete =[]
 
-                    input(name: varCap, type: dType, title: "MQTT enabled $capability devices",description: null, multiple: true, required: false, submitOnChange: true)
+                    input(name: varCap, type: dType, title: "MQTT enabled $capability devices",description: null, multiple: false, required: false, submitOnChange: true)
  
                 }
             
                 section {
                     app.removeSetting("vDev")     
-                    input(name: "vDev", type: dType, title: "Edit this $capability device",description: null, multiple: false, required: false, submitOnChange: true)
+                    input(name: "rabbit", type: dType, title: "Edit this $capability device",description: null, multiple: false, required: false, submitOnChange: true)
+log.error ("@@@@@@ vDev is $rabbit")
+                    vDev=rabbit
                     if (vDev == null) {
                     app.updateSetting("vDevName","")
                     input (name: "vDevName",type: "text", title: "... or create a new virtual $capability device called ..." , required: false, submitOnChange: true)
@@ -324,11 +326,19 @@ def vMQTT() {
                         atomicState.newDevType=capability
                         input "newVDev", "button", title: "Create device $vDevName", textColor: "green"
                     }
-                    else atomicState.vDevName=""
+                        else {
+                            //atomicState.vDevName=""
+                            log.error "bollocks2" //atomicState.vDevName=""
+                        }
                     }
+                    
+                    
+                    
                     else {
+                        log.error "editing device"
                         enabled=false
                         settings[varCap].each { enab ->
+                            log.error ("Enabled is $enabled .....   $enab")
                             if ("$enab"=="$vDev")  enabled=true
                         }
                          // input "editVDev", "button", title: "Edit device $vDev", textColor: "blue"
@@ -1674,7 +1684,7 @@ def initialize() {
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$name',settings?.hubName,1,true)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$mac','BB:AA:DD:AA:55:55',1,true,false)
 		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$localip',location.hubs[0].localIP,1,true,false)
-		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 29',1,true,false)
+		mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$fw/app','beta 3e pre 30',1,true,false)
         //mqtt.publishMsg ("homie/${atomicState.normHubName}/" +'$MAC',location.hubs[0].macAddress,1,true,false) // no property
         if (modes) currentMode()
         if (hsm) currentHSB()
@@ -3350,7 +3360,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre i28 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 30 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -10039,6 +10049,5 @@ def createChildDevice(name, type, system, friendlyName=null, dType='default',seq
       //log("Succesfully created new device $name","WARN")
 	  if (system != "HADisc") advertiseChild() 
 }
-
 
 
