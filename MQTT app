@@ -316,7 +316,7 @@ def vMQTT() {
                 section {
                     app.removeSetting("vDev")     
                     input(name: "rabbit", type: dType, title: "Edit this $capability device",description: null, multiple: false, required: false, submitOnChange: true)
-log.error ("@@@@@@ vDev is $rabbit")
+//log.error ("@@@@@@ vDev is $rabbit")
                     vDev=rabbit
                     if (vDev == null) {
                     app.updateSetting("vDevName","")
@@ -327,8 +327,7 @@ log.error ("@@@@@@ vDev is $rabbit")
                         input "newVDev", "button", title: "Create device $vDevName", textColor: "green"
                     }
                         else {
-                            //atomicState.vDevName=""
-                            log.error "bollocks2" //atomicState.vDevName=""
+                            //atomicState.vDevName
                         }
                     }
                     
