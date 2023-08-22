@@ -339,7 +339,7 @@ def vMQTT() {
                     atomicState.tete =[]
                     input(name: varCap, type: dType, title: "MQTT enabled $capability devices",description: null, multiple: true, required: false, submitOnChange: true)
                 }
-            if (skip==false){
+//            if (skip==false){
                 //log ("Skip appears to be false $skip","KH")
                 section {
 //                    vDev="Deleted"
@@ -388,8 +388,8 @@ def vMQTT() {
 */                                                
                     }                   
                 }
-            }// end section
-                else log ("Skipped because is a deleted device","KH")
+//            }// end section
+//                else log ("Skipped because is a deleted device","KH")
         }  // end capability
         atomicState.first=false
 
