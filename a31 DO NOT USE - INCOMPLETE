@@ -1,4 +1,4 @@
-// 22 Aug 2023 from 192.168.0.8 [C8] - alpha 3e pre 31 
+// 22/Aug/2023 from 192.168.0.8 [C8] - beta 3e pre 31 ALPHA 
 
 /*
  
@@ -82,7 +82,7 @@ preferences {  // can't use atomicState vars in this section
             
 			//page(name: "Configuration", title: "<h2><b>MQTT</b></h2>", nextPage: "vMQTT", uninstall: false, hideable: true,hideWhenEmpty: true){
             page(name: "configuration", title: "<h2><b>MQTT</b></h2>",install: true, uninstall: true, hideable: true,hideWhenEmpty: true){
-            section("  ver:   beta 3e pre 30"){}
+            section("  ver:   beta 3e pre 31 (alpha)"){}
             section ("<b>MQTT Broker</b>", hideable: true, hidden: true){
 				//createMQTTclient()
                 //input "mqtt2", "device.MQTTClient", required: false, multiple: false, title: ""
@@ -197,15 +197,19 @@ preferences {  // can't use atomicState vars in this section
     //page(name: "deleteDevice", title: "Delete virtual Device", nextPage: "configuration")
     page(name: "deleteDevice", title: "Delete MQTT virtual Device", nextPage: "vMQTT")
 }
-def deleteDevice(device) {
+def deleteDevice(params) {
+    log ( "params: ${params}", "INFO")
      // <-- must have parameter here to access values passed in as href params
     dynamicPage(name: "deleteDevice") {
         section {
-            paragraph "This is the delete page for $device"
+            paragraph "<b>$params.name</b>"
                     section {
-            //if (dOrigin=="user" && (enabled)) 
-            input "delVDev", "button", title: "Click to delete device $device", textColor: "red"
-            //paragraph 'Select "Next" to return to the main page.'
+                        if (params.origin=="user" && (params.enabled)) {
+                            input "delVDev", "button", title: "Delete device <b>$params.name</b>", textColor: "red"
+                        }
+                        else{
+                            paragraph 'This device is not enabled'
+                        }
         }
             paragraph 'Click "Next" to return to the Virtual MQTT Devices page.'
         }
@@ -222,7 +226,7 @@ def vMQTT() {
           input(name: "capability", type: "enum", title: "Device Type",description: null, multiple: false, required: false, submitOnChange: true, options: atomicState.vList)
         }  
         attList=[]
-        skip=false
+        //skip=false
         mqtt = getChildDevice("MQTT: Child device driver")
         log ("Device is $atomicState.dni", "LOG")
           log ("======================================================================", "LOG")
@@ -299,59 +303,32 @@ def vMQTT() {
         if (atomicState.Mappings==null) atomicState.Mappings=[:]
 
         if (capability) {
-            log ("cAPABILITY is *************************** "+ capability, "KH")
+            //log ("cAPABILITY is *************************** "+ capability, "KH")
             def String varCap = "var_" + "${capability}".replaceAll("\\s","")
             sensor=false
-            skip=false
-            log ("Skip set to false $skip","KH")
+            //skip=false
+            //log ("Skip set to false $skip","KH")
             settings[varCap].each { virtDev ->
-              
-                
                          try {
-                             
                                 dOrigin = (virtDev.getDataValue("origin"))
-                             
                                 if (virtDev !=null) {
-                    skip=false
-                                    log ("Skip set to false $skip","KH")
-                   //log ("VirtDev is *************************** "+ varCap, "KH")
-                    log ("VirtDev is *************************** "+ virtDev, "KH")
+                    //skip=false
+                    //log ("Skip set to false $skip","KH")
+                    //log ("VirtDev is *************************** "+ varCap, "KH")
+                    //log ("VirtDev is *************************** "+ virtDev, "KH")
                     virtDev.updateDataValue("mqtt", "enabled") // remove ?? not useful as we don't ever disable them ...
                     dOrigin = (virtDev.getDataValue("origin"))
                     if ((dOrigin=='user')||(dOrigin=="HA Discovery")) {  // This avoids registering HE devices (again)
                         log ("Subscribe to events from virtual device $virtDev","LOG")
                         registerAll (virtDev,0,'auto')
                     }
-                }
-                             
-                             
-                         }
+                }                         }
                          catch (e) {
                              log (" [310] This has probably been deleted","KH")
-                             skip=true
-                             log ("Skip set to true $skip","KH")
+                             //skip=true
+                             //log ("Skip set to true $skip","KH")
                           } 
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-
-            }
-           
+            }           
             dType = "capability.nowt"
             if (capability.contains("Sensor")||capability.contains("Presence")) sensor=true
             dType="device."+capability.replaceAll("\\s","")           
@@ -359,30 +336,23 @@ def vMQTT() {
             //else if (capability == "All Switches") dType= "capability.switch"
             //else if (capability == "All Dimmers") dType= "capability.switchLevel"
                 section {
- 
                     atomicState.tete =[]
-
                     input(name: varCap, type: dType, title: "MQTT enabled $capability devices",description: null, multiple: true, required: false, submitOnChange: true)
- 
                 }
- 
             if (skip==false){
-                log ("Skip appears to be false $skip","KH")
+                //log ("Skip appears to be false $skip","KH")
                 section {
-                    vDev="Deleted"
+//                    vDev="Deleted"
                     app.removeSetting("vDev") 
-                    log ("dType is " + dType,"KH")
+                    //log ("dType is " + dType,"KH")
                     input(name: "rabbit", type: dType, title: "Edit this $capability device",description: null, multiple: false, required: false, submitOnChange: true)
-//log.error ("@@@@@@ vDev is $rabbit")
                     vDev=rabbit
- if (vDev=="Deleted") log ("vDev is DELETED", "KH")
-                    if (vDev != null) log ("rabbit is " + rabbit +"~~", "KH")
+ //if (vDev=="Deleted") log ("vDev is DELETED", "KH")
+                    //if (vDev != null) log ("rabbit is " + rabbit +"~~", "KH")
                     if (vDev == null) {
-log ("Apparently vDev is NULL","KH")
+//log ("Apparently vDev is NULL","KH")
                     app.updateSetting("vDevName","")
-                    input (name: "vDevName",type: "text", title: "... or create a new virtual $capability device called ..." , required: false, submitOnChange: true)
-                        
-                        
+                    input (name: "vDevName",type: "text", title: "... or create a new virtual $capability device called ..." , required: false, submitOnChange: true)                       
                     if (vDevName != null){
                         atomicState.newDevName=vDevName  // This isn't enough to identify it from an incoming MQTT message - can only identify by topic
                         atomicState.newDevType=capability
@@ -392,11 +362,8 @@ log ("Apparently vDev is NULL","KH")
                             //atomicState.vDevName
                         }
                     }
-                    
-                    
-                    
                     else {
-                        log.error "editing device"
+                        log ("editing device","KH")
 // try {
                              
                         //dOrigin = (virtDev.getDataValue("origin"))
@@ -405,10 +372,6 @@ log ("Apparently vDev is NULL","KH")
                             log ("enab is " + enab, "KH")
                             log ("varCAP is " + varCap, "KH")
                             if (enab==null || enab=="") log ("varCAP has a NULL or empty value", "KH")
-                            log.error ("Enabled is $enabled .....   $enab")
-                            log ("##### enab is " + enab, "KH")
-                            log ("vDev is " + vDev, "KH")
-
                             if ("$enab"=="$vDev")  enabled=true
                         }
                          // input "editVDev", "button", title: "Edit device $vDev", textColor: "blue"
@@ -422,13 +385,7 @@ log ("Apparently vDev is NULL","KH")
                         catch (e) {
                             log ("Block deleted device editing","KH")
                         }
-*/                        
-  
-
-                        
-                        
-                        
-                        
+*/                                                
                     }                   
                 }
             }// end section
@@ -469,7 +426,16 @@ log ("Apparently vDev is NULL","KH")
                    // input(name: "atts", type: "enum", title: "Device Attributes",description: null, multiple: false, required: false, submitOnChange: true, options: ["Hi","you"])
                 }
               section {
-                  href name: "myHref", page: "deleteDevice", title: "<font color='red'> Go to Delete Device     $vDev.displayName</font>" , params: [device: vDev.displayName]
+                  
+                  def hrefParams = [
+                      name: vDev.displayName,
+                      enabled: enabled,
+                      uid:  vDev.deviceNetworkId,
+                      origin: dOrigin,
+                      ]
+                  
+                  
+                  href (name: "myHref", page: "deleteDevice", title: "<font color='red'> Go to Delete Device     $vDev.displayName</font>" , params: hrefParams)
               }
             atomicState.vDev=vDev.displayName
 
@@ -1321,7 +1287,6 @@ def appButtonHandler(btn) {
     else if (btn=="delVDev") {
         deleteChildDevice(atomicState.device.deviceNetworkId)
         log ("Deleted virtual device $vDev","WARN")
-
     }
     else if (btn=="editVDev") {
         atomicState.edit=true
@@ -3449,7 +3414,7 @@ def HADiscoveryAdvertise (name, type="none", category="none", id='0', payON="tru
         pID=''
     String ID = "${id}"
     if (ID != '0') {
-        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 30 beta 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
+        pID= ',"device": {"identifiers": "HE_'+ ID + '","name": "'+name+ '","sw_version":"pre 31 alpha 3e","model":"'+"${atomicState.normHubName}"+'","manufacturer":"Hubitat"}'  // TODO Investigate if this can work
     }
     else log ("ID is 0 for device $name  $type","WARN")
 		pON = ',"payload_on":"true"'  //default for booleans in homie
@@ -4337,7 +4302,7 @@ def pacingSet(pace) {
 def pacingLost (data) {
 
     if (("$data"=="cancel")||("$data"=="idle"))return
-    log.error ("MQTT broker lost pacing response for [$data]")
+    log ("MQTT broker lost pacing response for [$data]", "ERROR")
 }
 
 def pacing(payload) {
